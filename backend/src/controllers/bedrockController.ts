@@ -18,7 +18,7 @@ export const getBedrockAgentResponse = async (req: Request, res: Response) => {
                      "arn:aws:bedrock:us-west-2:965631485706:agent/ZBYIUMEYOE";
     
     // Default to TSTALIASID if not specified
-    const aliasId = agentAliasId || "TSTALIASID";
+    const aliasId = agentAliasId || "L3UQ4TMBQ8";
 
     console.log(`Invoking Bedrock Agent:
       - Agent ID: ${agentArn.split('/').pop()}

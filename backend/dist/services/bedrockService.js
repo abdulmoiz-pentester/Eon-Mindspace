@@ -3,46 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.invokeAgent = void 0;
 // services/bedrockAgentService.ts
 const client_bedrock_agent_runtime_1 = require("@aws-sdk/client-bedrock-agent-runtime");
-const credential_providers_1 = require("@aws-sdk/credential-providers");
-// Create a function to get fresh credentials
-const getFreshCredentials = async () => {
-    try {
-        // Use fromSSO which will handle token refresh if needed
-        return (0, credential_providers_1.fromSSO)({
-            profile: "bedrock-dev",
-            // Optional: Force refresh if token is expired
-            clientConfig: { region: "us-west-2" }
-        })();
-    }
-    catch (error) {
-        console.error("❌ Failed to get SSO credentials:", error.message);
-        // If token is expired/invalid, prompt user to login
-        if (error.message.includes('token') ||
-            error.message.includes('expired') ||
-            error.name === 'UnrecognizedClientException') {
-            console.error("\n🔑 AWS SSO TOKEN EXPIRED OR INVALID");
-            console.error("Run this command to refresh:");
-            console.error("aws sso login --profile bedrock-dev");
-            console.error("\nOr use IAM credentials instead (see .env.example)");
-            // Check if IAM credentials are available as fallback
-            if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-                console.log("🔄 Falling back to IAM credentials from environment...");
-                return {
-                    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-                    sessionToken: process.env.AWS_SESSION_TOKEN, // optional
-                };
-            }
-        }
-        throw error;
-    }
-};
 // Create client with dynamic credentials
-const client = new client_bedrock_agent_runtime_1.BedrockAgentRuntimeClient({
-    region: "us-west-2",
-    credentials: getFreshCredentials,
-});
-const invokeAgent = async (agentArn, inputText, agentAliasId = "TSTALIASID") => {
+const client = new client_bedrock_agent_runtime_1.BedrockAgentRuntimeClient();
+const invokeAgent = async (agentArn, inputText, agentAliasId = "L3UQ4TMBQ8") => {
     try {
         console.log("🔧 Invoking Bedrock Agent...");
         const agentId = agentArn.split('/').pop() || 'ZBYIUMEYOE';

@@ -15,7 +15,7 @@ const getBedrockAgentResponse = async (req, res) => {
         const agentArn = process.env.BEDROCK_AGENT_ARN ||
             "arn:aws:bedrock:us-west-2:965631485706:agent/ZBYIUMEYOE";
         // Default to TSTALIASID if not specified
-        const aliasId = agentAliasId || "TSTALIASID";
+        const aliasId = agentAliasId || "L3UQ4TMBQ8";
         console.log(`Invoking Bedrock Agent:
       - Agent ID: ${agentArn.split('/').pop()}
       - Alias ID: ${aliasId}
