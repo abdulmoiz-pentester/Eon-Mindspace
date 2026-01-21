@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { getBedrockResponse } from "../controllers/bedrockController";
+import { getBedrockAgentResponse } from "../controllers/bedrockController";
 
 const router = Router();
 
-router.post("/bedrock", getBedrockResponse);
+router.post("/bedrock-agent", getBedrockAgentResponse);
 
 export default router;

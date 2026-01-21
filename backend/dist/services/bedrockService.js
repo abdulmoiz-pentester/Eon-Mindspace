@@ -1,41 +1,81 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.invokeBedrockModel = void 0;
-const client_bedrock_runtime_1 = require("@aws-sdk/client-bedrock-runtime");
+exports.invokeAgent = void 0;
+// services/bedrockAgentService.ts
+const client_bedrock_agent_runtime_1 = require("@aws-sdk/client-bedrock-agent-runtime");
 const credential_providers_1 = require("@aws-sdk/credential-providers");
-// Initialize Bedrock client with SSO profile
-const bedrockClient = new client_bedrock_runtime_1.BedrockRuntimeClient({
-    region: process.env.AWS_REGION || "us-west-2",
-    credentials: (0, credential_providers_1.fromSSO)({ profile: "bedrock-dev" }),
-});
-/**
- * Send a prompt to Bedrock model and return the response
- * @param prompt The text input
- */
-const invokeBedrockModel = async (prompt) => {
+// Create a function to get fresh credentials
+const getFreshCredentials = async () => {
     try {
-        const command = new client_bedrock_runtime_1.InvokeModelCommand({
-            modelId: process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0",
-            body: JSON.stringify({ inputText: prompt }),
-        });
-        const response = await bedrockClient.send(command);
-        // Convert response stream to string
-        const bodyString = await streamToString(response.body);
-        const parsed = JSON.parse(bodyString);
-        // Depending on the model, adjust to extract text output
-        return parsed?.outputText || parsed?.result || JSON.stringify(parsed);
+        // Use fromSSO which will handle token refresh if needed
+        return (0, credential_providers_1.fromSSO)({
+            profile: "bedrock-dev",
+            // Optional: Force refresh if token is expired
+            clientConfig: { region: "us-west-2" }
+        })();
     }
     catch (error) {
-        console.error("Bedrock API error:", error);
-        throw new Error("Failed to get response from Bedrock model");
+        console.error("❌ Failed to get SSO credentials:", error.message);
+        // If token is expired/invalid, prompt user to login
+        if (error.message.includes('token') ||
+            error.message.includes('expired') ||
+            error.name === 'UnrecognizedClientException') {
+            console.error("\n🔑 AWS SSO TOKEN EXPIRED OR INVALID");
+            console.error("Run this command to refresh:");
+            console.error("aws sso login --profile bedrock-dev");
+            console.error("\nOr use IAM credentials instead (see .env.example)");
+            // Check if IAM credentials are available as fallback
+            if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+                console.log("🔄 Falling back to IAM credentials from environment...");
+                return {
+                    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+                    sessionToken: process.env.AWS_SESSION_TOKEN, // optional
+                };
+            }
+        }
+        throw error;
     }
 };
-exports.invokeBedrockModel = invokeBedrockModel;
-// Helper function to convert ReadableStream to string
-const streamToString = async (stream) => {
-    const chunks = [];
-    for await (const chunk of stream) {
-        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+// Create client with dynamic credentials
+const client = new client_bedrock_agent_runtime_1.BedrockAgentRuntimeClient({
+    region: "us-west-2",
+    credentials: getFreshCredentials,
+});
+const invokeAgent = async (agentArn, inputText, agentAliasId = "TSTALIASID") => {
+    try {
+        console.log("🔧 Invoking Bedrock Agent...");
+        const agentId = agentArn.split('/').pop() || 'ZBYIUMEYOE';
+        console.log(`🔧 Agent ID: ${agentId}, Alias ID: ${agentAliasId}`);
+        const command = new client_bedrock_agent_runtime_1.InvokeAgentCommand({
+            agentId,
+            agentAliasId,
+            sessionId: `session-${Date.now()}`,
+            inputText,
+        });
+        console.log("🔧 Sending command...");
+        const response = await client.send(command);
+        console.log("✅ Received response");
+        const chunks = [];
+        if (response.completion) {
+            console.log("🔧 Processing stream...");
+            for await (const chunk of response.completion) {
+                if (chunk.chunk?.bytes) {
+                    chunks.push(new TextDecoder().decode(chunk.chunk.bytes));
+                }
+            }
+        }
+        const result = chunks.join('');
+        console.log(`✅ Response (${result.length} chars):`, result.substring(0, 100) + '...');
+        return result;
     }
-    return Buffer.concat(chunks).toString("utf-8");
+    catch (err) {
+        console.error("🚨 AGENT ERROR:", err.name, "-", err.message);
+        if (err.name === 'UnrecognizedClientException') {
+            console.error("\n💡 QUICK FIX: Run this command then try again:");
+            console.error("aws sso login --profile bedrock-dev");
+        }
+        throw new Error(`Bedrock Agent error: ${err.message}`);
+    }
 };
+exports.invokeAgent = invokeAgent;

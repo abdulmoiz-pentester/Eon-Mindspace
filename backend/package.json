@@ -15,9 +15,10 @@
   "type": "commonjs",
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.972.0",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.972.0",
     "@aws-sdk/client-bedrock-runtime": "^3.972.0",
     "@aws-sdk/client-sts": "^3.972.0",
-    "@aws-sdk/credential-providers": "^3.972.0",
+    "@aws-sdk/credential-providers": "^3.391.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",

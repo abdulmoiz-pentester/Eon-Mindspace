@@ -1,18 +1,27 @@
+import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { fromIni } from "@aws-sdk/credential-providers";
-import { STSClient, GetCallerIdentityCommand } from "@aws-sdk/client-sts";
 
-async function testSSO() {
-  const client = new STSClient({
-    region: "us-west-1",
-    credentials: fromIni({ profile: "bedrock-dev" }),
+// SSO profile directly
+const client = new BedrockRuntimeClient({
+  region: "us-west-2",
+  credentials: fromIni({ profile: "bedrock-dev" }),
+});
+
+async function invokeAgent(prompt: string) {
+  const payload = { inputText: prompt };
+
+  const command = new InvokeModelCommand({
+    modelId: "ZBYIUMEYOE", // Your agent ID
+    body: new TextEncoder().encode(JSON.stringify(payload)),
+    contentType: "application/json",
+    accept: "application/json",
   });
 
-  try {
-    const response = await client.send(new GetCallerIdentityCommand({}));
-    console.log("SSO profile works. Identity:", response);
-  } catch (err) {
-    console.error("Error with SSO profile:", err);
-  }
+  const response = await client.send(command);
+
+  const decoded = new TextDecoder().decode(response.body);
+  return JSON.parse(decoded);
 }
 
-testSSO();
+// Test
+invokeAgent("Hello AI").then(console.log).catch(console.error);
