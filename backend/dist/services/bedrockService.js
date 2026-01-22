@@ -3,8 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.invokeAgent = void 0;
 // services/bedrockAgentService.ts
 const client_bedrock_agent_runtime_1 = require("@aws-sdk/client-bedrock-agent-runtime");
-// Create client with dynamic credentials
-const client = new client_bedrock_agent_runtime_1.BedrockAgentRuntimeClient();
+const credential_providers_1 = require("@aws-sdk/credential-providers");
+// Create client with dynamic credentials but its not working in my dev environment
+//const client = new BedrockAgentRuntimeClient();
+const client = new client_bedrock_agent_runtime_1.BedrockAgentRuntimeClient({
+    region: "us-west-2",
+    credentials: (0, credential_providers_1.fromSSO)({
+        profile: "bedrock-dev",
+    }),
+});
 const invokeAgent = async (agentArn, inputText, agentAliasId = "L3UQ4TMBQ8") => {
     try {
         console.log("🔧 Invoking Bedrock Agent...");
@@ -21,7 +28,6 @@ const invokeAgent = async (agentArn, inputText, agentAliasId = "L3UQ4TMBQ8") => 
         console.log("✅ Received response");
         const chunks = [];
         if (response.completion) {
-            console.log("🔧 Processing stream...");
             for await (const chunk of response.completion) {
                 if (chunk.chunk?.bytes) {
                     chunks.push(new TextDecoder().decode(chunk.chunk.bytes));

@@ -32,11 +32,16 @@ export function ChatInput({ onSend, isLoading, disabled, onStop }: ChatInputProp
     }
   }, [message]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !isLoading && !disabled) {
-      onSend(message.trim());
-      setMessage("");
+      const userMessage = message.trim();
+      setMessage(""); // clear textarea
+      
+      console.log("✍️ User message:", userMessage);
+
+      // Just notify parent with user's message
+      if (onSend) onSend(userMessage);
     }
   };
 
@@ -80,36 +85,24 @@ export function ChatInput({ onSend, isLoading, disabled, onStop }: ChatInputProp
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 pb-0.5">
-            {isLoading && onStop ? (
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                onClick={onStop}
-                className="rounded-xl"
-              >
-                <StopCircle className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                variant="send"
-                size="icon"
-                disabled={!message.trim() || isLoading || disabled}
-                className={cn(
-                  "rounded-xl transition-all duration-300",
-                  message.trim() && !isLoading
-                    ? "opacity-100 scale-100"
-                    : "opacity-50 scale-95"
-                )}
-              >
-                {isLoading ? (
-                  <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            )}
+            <Button
+              type="submit"
+              variant="send"
+              size="icon"
+              disabled={!message.trim() || isLoading || disabled}
+              className={cn(
+                "rounded-xl transition-all duration-300",
+                message.trim() && !isLoading
+                  ? "opacity-100 scale-100"
+                  : "opacity-50 scale-95"
+              )}
+            >
+              {isLoading ? (
+                <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         </div>
 

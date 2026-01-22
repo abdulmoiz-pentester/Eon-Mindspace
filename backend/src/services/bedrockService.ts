@@ -3,9 +3,16 @@ import {
   BedrockAgentRuntimeClient,
   InvokeAgentCommand,
 } from "@aws-sdk/client-bedrock-agent-runtime";
+import { fromSSO } from "@aws-sdk/credential-providers";
 
-// Create client with dynamic credentials
-const client = new BedrockAgentRuntimeClient();
+// Create client with dynamic credentials but its not working in my dev environment
+//const client = new BedrockAgentRuntimeClient();
+const client = new BedrockAgentRuntimeClient({
+region: "us-west-2",
+credentials: fromSSO({
+profile: "bedrock-dev",
+}),
+});
 
 export const invokeAgent = async (
   agentArn: string, 
@@ -30,19 +37,18 @@ export const invokeAgent = async (
     const response = await client.send(command);
     console.log("✅ Received response");
 
-    const chunks: string[] = [];
-    if (response.completion) {
-      console.log("🔧 Processing stream...");
-      for await (const chunk of response.completion) {
-        if (chunk.chunk?.bytes) {
-          chunks.push(new TextDecoder().decode(chunk.chunk.bytes));
-        }
-      }
+  const chunks: string[] = [];
+if (response.completion) {
+  for await (const chunk of response.completion) {
+    if (chunk.chunk?.bytes) {
+      chunks.push(new TextDecoder().decode(chunk.chunk.bytes));
     }
+  }
+}
 
-    const result = chunks.join('');
-    console.log(`✅ Response (${result.length} chars):`, result.substring(0, 100) + '...');
-    return result;
+const result = chunks.join('');
+console.log(`✅ Response (${result.length} chars):`, result.substring(0, 100) + '...');
+return result;
     
   } catch (err: any) {
     console.error("🚨 AGENT ERROR:", err.name, "-", err.message);

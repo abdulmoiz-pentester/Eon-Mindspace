@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { ChatHeader } from "@/components/chat/ChatHeader";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
-import { streamChat } from "@/lib/streamChat";
+import { sendToAgent } from "@/lib/bedrock-api";
 
 interface Message {
   id: string;
@@ -30,12 +30,9 @@ const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const { toast } = useToast();
-  const streamingContentRef = useRef<string>("");
 
   // Load chat history from localStorage on mount
   useEffect(() => {
@@ -103,73 +100,51 @@ const Index = () => {
         timestamp: new Date(),
       };
 
-      const assistantMessageId = (Date.now() + 1).toString();
+      // Add user message immediately
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
       setIsLoading(true);
-      streamingContentRef.current = "";
 
-      // Create placeholder assistant message
-      const assistantMessage: Message = {
-        id: assistantMessageId,
-        role: "assistant",
-        content: "",
-        timestamp: new Date(),
-      };
-      
-      setMessages([...updatedMessages, assistantMessage]);
-      setIsLoading(false);
-      setIsStreaming(true);
-      setStreamingMessageId(assistantMessageId);
-
-      const apiMessages = updatedMessages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      await streamChat({
-        messages: apiMessages,
-        onDelta: (chunk) => {
-          streamingContentRef.current += chunk;
-          setMessages(prev => {
-            const newMessages = [...prev];
-            const lastIdx = newMessages.length - 1;
-            if (newMessages[lastIdx]?.id === assistantMessageId) {
-              newMessages[lastIdx] = {
-                ...newMessages[lastIdx],
-                content: streamingContentRef.current,
-              };
-            }
-            return newMessages;
-          });
-        },
-        onDone: () => {
-          setIsStreaming(false);
-          setStreamingMessageId(null);
-          
-          // Save final messages to history
-          setMessages(prev => {
-            const finalMessages = prev.map(m => 
-              m.id === assistantMessageId 
-                ? { ...m, content: streamingContentRef.current, timestamp: new Date() }
-                : m
-            );
-            saveToHistory(finalMessages);
-            return finalMessages;
-          });
-        },
-        onError: (error) => {
-          setIsStreaming(false);
-          setStreamingMessageId(null);
-          toast({
-            title: "Error",
-            description: error.message,
-            variant: "destructive",
-          });
-          // Remove the empty assistant message on error
-          setMessages(prev => prev.filter(m => m.id !== assistantMessageId));
-        },
-      });
+      try {
+        console.log("🔄 Calling agent...");
+        const reply = await sendToAgent(content); // Call your backend API
+        
+        console.log("✅ Agent reply received:", reply.substring(0, 100));
+        
+        // Add assistant response
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: reply,
+          timestamp: new Date(),
+        };
+        
+        const finalMessages = [...updatedMessages, assistantMessage];
+        setMessages(finalMessages);
+        saveToHistory(finalMessages);
+        
+      } catch (err) {
+        console.error("❌ Error in handleSend:", err);
+        
+        // Add error message
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Sorry, something went wrong. Please try again.",
+          timestamp: new Date(),
+        };
+        
+        const finalMessages = [...updatedMessages, errorMessage];
+        setMessages(finalMessages);
+        
+        toast({
+          title: "Error",
+          description: "Failed to get response from agent.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     },
     [messages, saveToHistory, toast]
   );
@@ -259,62 +234,53 @@ const Index = () => {
       const messageIndex = messages.findIndex((m) => m.id === messageId);
       if (messageIndex === -1) return;
       
+      // Get all messages up to the one before the one being regenerated
       const previousMessages = messages.slice(0, messageIndex);
-      streamingContentRef.current = "";
+      const lastUserMessage = [...previousMessages].reverse().find(m => m.role === "user");
       
-      setMessages(prev => {
-        const newMessages = [...prev];
-        newMessages[messageIndex] = { ...newMessages[messageIndex], content: "" };
-        return newMessages;
-      });
+      if (!lastUserMessage) {
+        toast({
+          title: "Error",
+          description: "No user message found to regenerate from.",
+          variant: "destructive",
+        });
+        return;
+      }
       
-      setIsStreaming(true);
-      setStreamingMessageId(messageId);
-
-      const apiMessages = previousMessages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      await streamChat({
-        messages: apiMessages,
-        onDelta: (chunk) => {
-          streamingContentRef.current += chunk;
-          setMessages(prev => {
-            const newMessages = [...prev];
-            if (newMessages[messageIndex]) {
-              newMessages[messageIndex] = {
-                ...newMessages[messageIndex],
-                content: streamingContentRef.current,
-              };
-            }
-            return newMessages;
-          });
-        },
-        onDone: () => {
-          setIsStreaming(false);
-          setStreamingMessageId(null);
-          
-          setMessages(prev => {
-            const finalMessages = prev.map((m, i) => 
-              i === messageIndex 
-                ? { ...m, content: streamingContentRef.current, timestamp: new Date() }
-                : m
-            );
-            saveToHistory(finalMessages);
-            return finalMessages;
-          });
-        },
-        onError: (error) => {
-          setIsStreaming(false);
-          setStreamingMessageId(null);
-          toast({
-            title: "Error",
-            description: error.message,
-            variant: "destructive",
-          });
-        },
-      });
+      // Remove the message being regenerated and all messages after it
+      const messagesUpToUser = previousMessages;
+      
+      setIsLoading(true);
+      
+      try {
+        console.log("🔄 Regenerating response...");
+        const reply = await sendToAgent(lastUserMessage.content);
+        
+        console.log("✅ Regenerated reply received:", reply.substring(0, 100));
+        
+        // Create new assistant message
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: reply,
+          timestamp: new Date(),
+        };
+        
+        // Replace messages from the regeneration point
+        const finalMessages = [...messagesUpToUser, assistantMessage];
+        setMessages(finalMessages);
+        saveToHistory(finalMessages);
+        
+      } catch (err) {
+        console.error("❌ Error in handleRegenerate:", err);
+        toast({
+          title: "Error",
+          description: "Failed to regenerate response.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     },
     [messages, saveToHistory, toast]
   );
@@ -365,8 +331,6 @@ const Index = () => {
         <ChatArea
           messages={messages}
           isLoading={isLoading}
-          isStreaming={isStreaming}
-          streamingMessageId={streamingMessageId}
           onSend={handleSend}
           onRegenerate={handleRegenerate}
           user={user}

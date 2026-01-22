@@ -11,7 +11,6 @@ interface ChatMessageProps {
   content: string;
   timestamp?: Date;
   isLoading?: boolean;
-  isStreaming?: boolean;
   userAvatar?: string;
   userName?: string;
   onRegenerate?: () => void;
@@ -22,7 +21,6 @@ function ChatMessageComponent({
   content,
   timestamp,
   isLoading,
-  isStreaming,
   userAvatar,
   userName,
   onRegenerate,
@@ -51,7 +49,7 @@ function ChatMessageComponent({
           </div>
           <div className={cn(
             "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-background",
-            isStreaming || isLoading ? "bg-yellow-400 animate-pulse" : "bg-accent"
+            "bg-accent"
           )} />
         </div>
       )}
@@ -141,15 +139,12 @@ function ChatMessageComponent({
               >
                 {content}
               </ReactMarkdown>
-              {isStreaming && (
-                <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5" />
-              )}
             </div>
           )}
         </div>
 
         {/* Actions */}
-        {!isLoading && !isStreaming && !isUser && content && (
+        {!isLoading && !isUser && content && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
@@ -176,7 +171,7 @@ function ChatMessageComponent({
           </div>
         )}
 
-        {timestamp && !isStreaming && (
+        {timestamp && (
           <span className="text-xs text-muted-foreground">
             {timestamp.toLocaleTimeString([], {
               hour: "2-digit",

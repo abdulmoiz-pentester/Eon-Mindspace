@@ -32,7 +32,7 @@ export const getBedrockAgentResponse = async (req: Request, res: Response) => {
     // Return the response
     res.json({ 
       success: true, 
-      response: response,
+      answer: response,
       agentAliasUsed: aliasId,
       timestamp: new Date().toISOString()
     });

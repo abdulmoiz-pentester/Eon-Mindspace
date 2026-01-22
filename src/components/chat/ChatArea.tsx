@@ -3,7 +3,7 @@ import { Shield, Lock, Key, FileCheck, Zap, Globe } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { cn } from "../../lib/utils";
-//import eonLogo from "./assets/eon-logo.png";
+import eonLogo from "./assets/eon-logo.png";
 
 interface Message {
   id: string;
@@ -15,8 +15,6 @@ interface Message {
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
-  isStreaming?: boolean;
-  streamingMessageId?: string | null;
   onSend: (message: string) => void;
   onRegenerate?: (messageId: string) => void;
   user?: {
@@ -61,8 +59,6 @@ const quickActions = [
 export function ChatArea({
   messages,
   isLoading,
-  isStreaming,
-  streamingMessageId,
   onSend,
   onRegenerate,
   user,
@@ -71,7 +67,7 @@ export function ChatArea({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, isStreaming]);
+  }, [messages, isLoading]);
 
   const isEmpty = messages.length === 0;
 
@@ -156,17 +152,16 @@ export function ChatArea({
                 role={message.role}
                 content={message.content}
                 timestamp={message.timestamp}
-                isStreaming={isStreaming && streamingMessageId === message.id}
                 userAvatar={user?.avatar}
                 userName={user?.name}
                 onRegenerate={
-                  message.role === "assistant" && onRegenerate && !isStreaming
+                  message.role === "assistant" && onRegenerate
                     ? () => onRegenerate(message.id)
                     : undefined
                 }
               />
             ))}
-            {isLoading && !isStreaming && (
+            {isLoading && (
               <ChatMessage
                 role="assistant"
                 content=""
@@ -179,7 +174,7 @@ export function ChatArea({
       </div>
 
       {/* Input Area */}
-      <ChatInput onSend={onSend} isLoading={isLoading || isStreaming} />
+      <ChatInput onSend={onSend} isLoading={isLoading} />
     </div>
   );
 }
