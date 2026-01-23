@@ -78,3 +78,17 @@ coverage/
 *.tgz
 *.tar.gz
 *.zip
+
+/Cache/
+/DawnGraphiteCache/
+/DawnWebGPUCache/
+/GPUCache/
+/User/
+/Network Persistent State
+/Local Storage/
+/Session Storage/
+/IndexedDB/
+/flux/
+/Service Worker/
+/Dictionaries/
+/CachedConfigurations/  
