@@ -1,0 +1,23 @@
+# SAML Configuration
+ENABLE_SAML=true # Set to true for production
+SAML_ENTRY_POINT=https://secure-login.awsapps.com/start/#/
+SAML_ISSUER=urn:amazon:webservices
+SAML_IDP_CERT=  # Paste the certificate from AWS SSO metadata
+SAML_CALLBACK_URL=http://localhost:5000/auth/saml/callback
+SAML_PRIVATE_KEY=  # Your private key (optional)
+SAML_PUBLIC_CERT=  # Your public certificate (optional)
+SAML_AUDIENCE=urn:amazon:webservices
+
+# Session
+SESSION_SECRET=your-super-secret-key-change-in-production
+SESSION_MAX_AGE=86400000
+SESSION_COOKIE_NAME=eon_session
+
+# Allowed Domains
+ALLOWED_DOMAINS=eonhealth.com
+
+# Frontend URL
+FRONTEND_URL=http://localhost:8080
+
+# Development override
+ALLOW_DEV_LOGIN=true # Set to false in production
