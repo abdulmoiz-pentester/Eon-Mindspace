@@ -1,35 +1,36 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.invokeModel = exports.bedrockClient = void 0;
-const client_bedrock_runtime_1 = require("@aws-sdk/client-bedrock-runtime"); // Note: bedrock-runtime instead of bedrock
-const credential_providers_1 = require("@aws-sdk/credential-providers");
-// Use SSO profile credentials
-exports.bedrockClient = new client_bedrock_runtime_1.BedrockRuntimeClient({
-    region: process.env.AWS_REGION || "us-west-2",
-    credentials: (0, credential_providers_1.fromIni)({ profile: "bedrock-dev" }),
-});
-// Convert NodeJS ReadableStream to string
-const streamToString = async (stream) => {
-    const chunks = [];
-    for await (const chunk of stream) {
-        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+exports.getAWSCredentials = void 0;
+const credential_provider_sso_1 = require("@aws-sdk/credential-provider-sso");
+// Helper to get AWS credentials based on environment
+const getAWSCredentials = async () => {
+    if (process.env.NODE_ENV === 'development' && !process.env.ENABLE_SAML) {
+        // Use local SSO profile
+        return (0, credential_provider_sso_1.fromSSO)({
+            profile: process.env.AWS_PROFILE || 'default'
+        })();
     }
-    return Buffer.concat(chunks).toString("utf-8");
+    // In production/SAML mode, credentials come from session
+    throw new Error('AWS credentials should be retrieved from user session');
 };
-// Function to invoke a Bedrock model
-const invokeModel = async (modelId, input) => {
-    const command = new client_bedrock_runtime_1.InvokeModelCommand({
-        modelId,
-        body: JSON.stringify({ inputText: input }),
-    });
-    const response = await exports.bedrockClient.send(command);
-    // TypeScript may complain about body type, cast it as any
-    const bodyString = await streamToString(response.body);
-    try {
-        return JSON.parse(bodyString);
-    }
-    catch {
-        return bodyString; // fallback in case response is plain text
-    }
+exports.getAWSCredentials = getAWSCredentials;
+// Default configuration
+const awsConfig = {
+    region: process.env.AWS_REGION || 'us-west-2 ',
+    // For development (local SSO)
+    ssoStartUrl: process.env.AWS_SSO_START_URL,
+    ssoRegion: process.env.AWS_SSO_REGION,
+    ssoAccountId: process.env.AWS_SSO_ACCOUNT_ID,
+    ssoRoleName: process.env.AWS_SSO_ROLE_NAME,
+    // For production SAML
+    saml: process.env.ENABLE_SAML ? {
+        entryPoint: process.env.SAML_ENTRY_POINT || '',
+        issuer: process.env.SAML_ISSUER || 'urn:amazon:webservices',
+        cert: process.env.SAML_IDP_CERT || '',
+        callbackUrl: process.env.SAML_CALLBACK_URL || `${process.env.APP_URL}/auth/saml/callback`,
+        audience: process.env.SAML_AUDIENCE || 'urn:amazon:webservices',
+        privateKey: process.env.SAML_PRIVATE_KEY || '',
+        publicCert: process.env.SAML_PUBLIC_CERT || '',
+    } : undefined
 };
-exports.invokeModel = invokeModel;
+exports.default = awsConfig;

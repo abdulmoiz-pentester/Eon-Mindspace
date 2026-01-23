@@ -1,10 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAgentHealth = exports.getBedrockAgentResponse = void 0;
+exports.getBedrockAgentResponseAuth = exports.getAgentHealth = exports.getBedrockAgentResponse = void 0;
 const bedrockService_1 = require("../services/bedrockService");
 const getBedrockAgentResponse = async (req, res) => {
     try {
         const { message, agentAliasId } = req.body;
+        // Optional: Check authentication (uncomment when ready)
+        // const authReq = req as AuthenticatedRequest;
+        // if (!authReq.user) {
+        //   return res.status(401).json({
+        //     success: false,
+        //     error: "Authentication required"
+        //   });
+        // }
+        // Optional: Log user info
+        // const userEmail = (req as AuthenticatedRequest).user?.email;
+        // console.log(`Request from user: ${userEmail}`);
         if (!message) {
             return res.status(400).json({
                 success: false,
@@ -20,6 +31,7 @@ const getBedrockAgentResponse = async (req, res) => {
       - Agent ID: ${agentArn.split('/').pop()}
       - Alias ID: ${aliasId}
       - Message: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}
+   
     `);
         // Call the service function
         const response = await (0, bedrockService_1.invokeAgent)(agentArn, message, aliasId);
@@ -29,6 +41,7 @@ const getBedrockAgentResponse = async (req, res) => {
             answer: response,
             agentAliasUsed: aliasId,
             timestamp: new Date().toISOString()
+            // user: userEmail // Optional: Include user info in response
         });
     }
     catch (err) {
@@ -51,7 +64,22 @@ const getAgentHealth = async (req, res) => {
             { id: "TSTALIASID", name: "AgentTestAlias", description: "Test Alias for Agent" },
             { id: "L3UQ4TMBQ8", name: "Eon-Mindspace", description: "Production alias" }
         ],
-        region: "us-west-2"
+        region: "us-west-2",
+        authentication: "Optional - add 'requireAuth' middleware to protect endpoint"
     });
 };
 exports.getAgentHealth = getAgentHealth;
+// NEW: Add authenticated version if needed
+const getBedrockAgentResponseAuth = async (req, res) => {
+    const authReq = req;
+    if (!authReq.user) {
+        return res.status(401).json({
+            success: false,
+            error: "Authentication required",
+            loginUrl: "/auth/login"
+        });
+    }
+    // Reuse the existing logic
+    return (0, exports.getBedrockAgentResponse)(req, res);
+};
+exports.getBedrockAgentResponseAuth = getBedrockAgentResponseAuth;

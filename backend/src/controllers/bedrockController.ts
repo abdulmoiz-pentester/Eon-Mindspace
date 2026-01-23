@@ -1,10 +1,24 @@
 // controllers/bedrockController.ts
 import { Request, Response } from "express";
 import { invokeAgent } from "../services/bedrockService";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 
 export const getBedrockAgentResponse = async (req: Request, res: Response) => {
   try {
     const { message, agentAliasId } = req.body;
+    
+    // Optional: Check authentication (uncomment when ready)
+    // const authReq = req as AuthenticatedRequest;
+    // if (!authReq.user) {
+    //   return res.status(401).json({
+    //     success: false,
+    //     error: "Authentication required"
+    //   });
+    // }
+    
+    // Optional: Log user info
+    // const userEmail = (req as AuthenticatedRequest).user?.email;
+    // console.log(`Request from user: ${userEmail}`);
     
     if (!message) {
       return res.status(400).json({ 
@@ -24,6 +38,7 @@ export const getBedrockAgentResponse = async (req: Request, res: Response) => {
       - Agent ID: ${agentArn.split('/').pop()}
       - Alias ID: ${aliasId}
       - Message: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}
+   
     `);
 
     // Call the service function
@@ -35,6 +50,7 @@ export const getBedrockAgentResponse = async (req: Request, res: Response) => {
       answer: response,
       agentAliasUsed: aliasId,
       timestamp: new Date().toISOString()
+      // user: userEmail // Optional: Include user info in response
     });
     
   } catch (err: any) {
@@ -58,6 +74,23 @@ export const getAgentHealth = async (req: Request, res: Response) => {
       { id: "TSTALIASID", name: "AgentTestAlias", description: "Test Alias for Agent" },
       { id: "L3UQ4TMBQ8", name: "Eon-Mindspace", description: "Production alias" }
     ],
-    region: "us-west-2"
+    region: "us-west-2",
+    authentication: "Optional - add 'requireAuth' middleware to protect endpoint"
   });
+};
+
+// NEW: Add authenticated version if needed
+export const getBedrockAgentResponseAuth = async (req: Request, res: Response) => {
+  const authReq = req as AuthenticatedRequest;
+  
+  if (!authReq.user) {
+    return res.status(401).json({
+      success: false,
+      error: "Authentication required",
+      loginUrl: "/auth/login"
+    });
+  }
+  
+  // Reuse the existing logic
+  return getBedrockAgentResponse(req, res);
 };
