@@ -1,58 +1,39 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const session_services_1 = require("../services/session.services");
-const passport_1 = __importDefault(require("passport"));
-const passport_2 = require("../config/passport");
+const saml_services_1 = require("../services/saml.services");
 // Create instances
 const sessionService = new session_services_1.SessionService();
-const ENABLE_SAML = process.env.ENABLE_SAML === 'true' || process.env.NODE_ENV === 'production';
-// Mock SAMLService if it doesn't exist yet
-let samlService;
-try {
-    const SAMLModule = require('../services/saml.services');
-    samlService = new SAMLModule.SAMLService();
-}
-catch (error) {
-    samlService = {
-        generateLoginRequest: async (returnTo) => `/auth/dev/login?returnTo=${returnTo}`,
-        processResponse: async (samlResponse) => ({
-            email: 'test@example.com',
-            name: 'Test User',
-            company: 'Test Company'
-        }),
-        generateMetadata: () => '<xml>Metadata</xml>'
-    };
-}
+const samlService = new saml_services_1.SAMLService(); // Create instance of SAMLService
+const ENABLE_SAML = process.env.ENABLE_SAML === 'true';
 class AuthController {
     /**
-     * Initiate AWS SSO login
+     * Initiate SAML login - FIXED VERSION
      */
     async login(req, res) {
         try {
+            console.log('=== LOGIN REQUEST ===');
             const returnTo = req.query.returnTo || '/';
-            if (ENABLE_SAML && passport_2.samlStrategy) {
-                // SAML login
-                console.log('Initiating SAML login');
-                req.session = req.session || {};
-                req.session.returnTo = returnTo;
-                passport_1.default.authenticate('saml', {
-                    failureRedirect: '/auth/login?error=saml_failed',
-                    failureFlash: false
-                })(req, res);
+            if (ENABLE_SAML) {
+                console.log('🔐 Initiating SAML login to Keycloak');
+                // Store returnTo in session
+                if (req.session) {
+                    req.session.returnTo = returnTo;
+                }
+                // Use SAMLService to generate proper SAML login URL
+                const loginUrl = await samlService.generateLoginUrl(returnTo);
+                console.log('✅ Generated SAML login URL');
+                console.log('Redirecting to Keycloak');
+                return res.redirect(loginUrl);
             }
             else {
-                // Development/local login
-                const loginUrl = await samlService.generateLoginRequest(returnTo);
-                console.log('Redirecting to:', loginUrl);
-                res.redirect(loginUrl);
+                console.log('🔧 SAML not available, using dev login');
+                return res.redirect(`/auth/dev/login?returnTo=${encodeURIComponent(returnTo)}`);
             }
         }
         catch (error) {
-            console.error('Login initiation failed:', error);
+            console.error('❌ Login initiation failed:', error);
             res.status(500).json({
                 error: 'Failed to initiate login',
                 message: error instanceof Error ? error.message : 'Unknown error'
@@ -60,110 +41,210 @@ class AuthController {
         }
     }
     /**
-     * SAML Callback endpoint
+     * SAML Callback endpoint - FIXED VERSION
      */
-    samlCallback(req, res, next) {
-        if (!ENABLE_SAML || !passport_2.samlStrategy) {
-            return res.status(400).json({ error: 'SAML authentication is not enabled' });
-        }
-        passport_1.default.authenticate('saml', {
-            failureRedirect: '/auth/login?error=saml_auth_failed',
-            failureFlash: false
-        }, (err, user, info) => {
-            if (err) {
-                console.error('SAML authentication error:', err);
-                return res.redirect('/auth/login?error=' + encodeURIComponent(err.message));
-            }
-            if (!user) {
-                return res.redirect('/auth/login?error=authentication_failed');
-            }
-            req.login(user, (loginErr) => {
-                if (loginErr) {
-                    console.error('Login error:', loginErr);
-                    return res.redirect('/auth/login?error=session_error');
-                }
-                // Create session
-                const { token, expiresAt } = sessionService.createSession(user);
-                sessionService.setSessionCookie(res, token, expiresAt);
-                // Set user info cookie for frontend
-                res.cookie('user_info', JSON.stringify({
-                    email: user.email,
-                    name: user.name,
-                    company: user.company
-                }), {
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'lax',
-                    expires: expiresAt
-                });
-                // Redirect to original destination
-                const returnTo = req.session?.returnTo || '/chat';
-                if (req.session) {
-                    delete req.session.returnTo;
-                }
-                if (process.env.FRONTEND_URL && !returnTo.startsWith('http')) {
-                    const frontendUrl = process.env.FRONTEND_URL + returnTo;
-                    return res.redirect(frontendUrl);
-                }
-                res.redirect(returnTo);
-            });
-        })(req, res, next);
-    }
-    /**
-     * Original ACS endpoint (backward compatibility)
-     */
-    async acs(req, res) {
+    async samlCallback(req, res) {
         try {
-            if (ENABLE_SAML) {
-                return this.samlCallback(req, res, () => { });
+            console.log('=== SAML CALLBACK ===');
+            console.log('Method:', req.method);
+            console.log('Body:', req.body);
+            if (!ENABLE_SAML) {
+                console.error('❌ SAML not enabled');
+                return res.status(400).json({ error: 'SAML authentication is not enabled' });
             }
             const { SAMLResponse, RelayState } = req.body;
             if (!SAMLResponse) {
+                console.error('❌ No SAMLResponse in request body');
                 return res.status(400).json({ error: 'No SAML response provided' });
             }
-            const userInfo = await samlService.processResponse(SAMLResponse);
+            console.log('📥 Processing SAML response from Keycloak...');
+            // Process SAML response using SAMLService
+            const samlUser = await samlService.processResponse(SAMLResponse, RelayState);
+            // Extract user information from SAML response
+            const userInfo = this.extractUserInfo(samlUser);
+            console.log('✅ SAML authentication successful for:', userInfo.email);
+            // Create session token
             const { token, expiresAt } = sessionService.createSession(userInfo);
+            // Set session cookie
             sessionService.setSessionCookie(res, token, expiresAt);
+            // Set user info cookie for frontend
             res.cookie('user_info', JSON.stringify({
                 email: userInfo.email,
                 name: userInfo.name,
+                firstName: userInfo.firstName,
+                lastName: userInfo.lastName,
                 company: userInfo.company
             }), {
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'lax',
-                expires: expiresAt
+                expires: expiresAt,
+                httpOnly: false
             });
-            const redirectTo = RelayState || '/chat';
-            if (process.env.FRONTEND_URL && !redirectTo.startsWith('http')) {
-                const frontendUrl = process.env.FRONTEND_URL + redirectTo;
-                return res.redirect(frontendUrl);
+            // Determine where to redirect
+            let redirectTo = '/';
+            // Priority: 1. RelayState from SAML response, 2. session.returnTo
+            if (RelayState) {
+                redirectTo = RelayState;
+                console.log('📌 Using RelayState from SAML response:', redirectTo);
             }
-            res.redirect(redirectTo);
+            else if (req.session?.returnTo) {
+                redirectTo = req.session.returnTo;
+                console.log('📌 Using returnTo from session:', redirectTo);
+                delete req.session.returnTo;
+            }
+            console.log('🔀 Final redirect to:', redirectTo);
+            // Redirect to frontend or directly
+            const frontendUrl = process.env.FRONTEND_URL;
+            if (frontendUrl && !redirectTo.startsWith('http')) {
+                const normalizedPath = redirectTo.startsWith('/') ? redirectTo : `/${redirectTo}`;
+                const finalUrl = `${frontendUrl}${normalizedPath}`;
+                console.log('🚀 Redirecting to frontend:', finalUrl);
+                return res.redirect(finalUrl);
+            }
+            return res.redirect(redirectTo);
         }
         catch (error) {
-            console.error('ACS processing failed:', error);
-            const errorMessage = encodeURIComponent(error instanceof Error ? error.message : 'Authentication failed');
-            if (process.env.FRONTEND_URL) {
-                res.redirect(`${process.env.FRONTEND_URL}/login?error=${errorMessage}`);
-            }
-            else {
-                res.status(401).send(`
-          <html>
-            <body>
-              <h1>Authentication Failed</h1>
-              <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
-              <a href="/auth/login">Try again</a>
-            </body>
-          </html>
-        `);
-            }
+            console.error('❌ SAML callback failed:', error);
+            const errorMsg = encodeURIComponent(error instanceof Error ? error.message : 'Authentication failed');
+            return res.redirect(`/auth/login?error=${errorMsg}`);
         }
+    }
+    /**
+     * Extract user information from SAML response
+     */
+    extractUserInfo(samlUser) {
+        console.log('Raw SAML user:', JSON.stringify(samlUser, null, 2));
+        // SAML2-JS returns user info in samlUser.user
+        const user = samlUser.user || {};
+        const attributes = user.attributes || {};
+        // Extract email
+        const email = user.name_id ||
+            attributes.email ||
+            attributes.mail ||
+            attributes['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
+            'unknown@example.com';
+        // Extract name
+        const name = attributes.name ||
+            attributes.displayName ||
+            attributes['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ||
+            email.split('@')[0];
+        // Extract first and last names
+        const firstName = attributes.firstName ||
+            attributes.givenName ||
+            attributes['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'] ||
+            name.split(' ')[0];
+        const lastName = attributes.lastName ||
+            attributes.sn ||
+            attributes['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'] ||
+            name.split(' ').slice(1).join(' ') ||
+            '';
+        return {
+            id: user.name_id || `saml-${Date.now()}`,
+            email,
+            name,
+            firstName,
+            lastName,
+            company: this.extractCompanyFromEmail(email),
+            groups: attributes.groups || [],
+            sessionIndex: user.session_index || ''
+        };
+    }
+    /**
+     * Extract company name from email domain
+     */
+    extractCompanyFromEmail(email) {
+        const domain = email.split('@')[1] || '';
+        const domainParts = domain.split('.');
+        if (domainParts.length >= 2) {
+            return domainParts[domainParts.length - 2]
+                .charAt(0).toUpperCase() +
+                domainParts[domainParts.length - 2].slice(1);
+        }
+        return domain || 'Eon Health';
+    }
+    /**
+     * Get SAML metadata
+     */
+    getMetadata(req, res) {
+        try {
+            console.log('=== METADATA REQUEST ===');
+            if (!ENABLE_SAML) {
+                return res.status(400).json({ error: 'SAML is not enabled' });
+            }
+            console.log('📋 Generating SAML metadata for Keycloak...');
+            // Use SAMLService to generate metadata
+            const metadata = samlService.generateMetadata();
+            console.log('✅ Metadata generated successfully');
+            res.type('application/xml');
+            res.setHeader('Content-Disposition', 'inline; filename="metadata.xml"');
+            res.send(metadata);
+        }
+        catch (error) {
+            console.error('❌ Failed to generate metadata:', error);
+            res.status(500).json({
+                error: 'Failed to generate metadata',
+                message: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    }
+    /**
+     * Development login
+     */
+    devLogin(req, res) {
+        console.log('=== DEV LOGIN ===');
+        const allowDev = process.env.ALLOW_DEV_LOGIN === 'true' ||
+            process.env.NODE_ENV === 'development';
+        if (!allowDev) {
+            return res.status(403).json({ error: 'Development only endpoint' });
+        }
+        const email = req.query.email || 'developer@eonhealth.com';
+        const name = req.query.name || 'Developer';
+        const returnTo = req.query.returnTo || '/';
+        console.log('Dev login with:', { email, name, returnTo });
+        const mockUserInfo = {
+            id: `dev-${Date.now()}`,
+            email: email,
+            name: name,
+            firstName: name.split(' ')[0],
+            lastName: name.split(' ').slice(1).join(' ') || '',
+            company: 'Eon Health',
+            groups: ['developers'],
+            domain: email.split('@')[1] || 'eonhealth.com'
+        };
+        // Create session
+        const { token, expiresAt } = sessionService.createSession(mockUserInfo);
+        sessionService.setSessionCookie(res, token, expiresAt);
+        // Set user info cookie
+        res.cookie('user_info', JSON.stringify({
+            email: mockUserInfo.email,
+            name: mockUserInfo.name,
+            firstName: mockUserInfo.firstName,
+            lastName: mockUserInfo.lastName,
+            company: mockUserInfo.company
+        }), {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            expires: expiresAt,
+            httpOnly: false
+        });
+        console.log('✅ Dev session created for:', email);
+        // Redirect
+        const frontendUrl = process.env.FRONTEND_URL;
+        if (frontendUrl && !returnTo.startsWith('http')) {
+            const finalUrl = `${frontendUrl}${returnTo.startsWith('/') ? returnTo : '/' + returnTo}`;
+            return res.redirect(finalUrl);
+        }
+        res.redirect(returnTo);
     }
     /**
      * Get current session info
      */
     getSession(req, res) {
         if (!req.user) {
-            return res.status(401).json({ error: 'Not authenticated' });
+            return res.status(401).json({
+                authenticated: false,
+                message: 'Not authenticated'
+            });
         }
         res.json({
             authenticated: true,
@@ -172,108 +253,44 @@ class AuthController {
         });
     }
     /**
-     * Logout - clears session
+     * Logout
      */
     logout(req, res) {
-        if (req.logout) {
-            req.logout((err) => {
-                if (err)
-                    console.error('Passport logout error:', err);
-            });
-        }
+        console.log('=== LOGOUT ===');
+        // Clear cookies
         sessionService.clearSessionCookie(res);
         res.clearCookie('user_info');
+        // Passport logout
+        req.logout((err) => {
+            if (err)
+                console.error('Logout error:', err);
+        });
+        // Destroy session
         if (req.session) {
             req.session.destroy((err) => {
                 if (err)
                     console.error('Session destruction error:', err);
             });
         }
+        console.log('✅ Logout successful');
         res.json({
             success: true,
             message: 'Logged out successfully'
         });
     }
     /**
-     * Get SAML metadata
-     */
-    getMetadata(req, res) {
-        try {
-            if (ENABLE_SAML) {
-                return this.getSamlMetadata(req, res);
-            }
-            const metadata = samlService.generateMetadata();
-            res.type('application/xml');
-            res.send(metadata);
-        }
-        catch (error) {
-            console.error('Failed to generate metadata:', error);
-            res.status(500).json({ error: 'Failed to generate metadata' });
-        }
-    }
-    /**
-     * SAML Metadata endpoint
-     */
-    getSamlMetadata(req, res) {
-        try {
-            if (!ENABLE_SAML || !passport_2.samlStrategy) {
-                return res.status(400).json({ error: 'SAML is not enabled' });
-            }
-            const metadata = passport_2.samlStrategy.generateServiceProviderMetadata(process.env.SAML_PUBLIC_CERT || '', process.env.SAML_PUBLIC_CERT || '');
-            res.type('application/xml');
-            res.send(metadata);
-        }
-        catch (error) {
-            console.error('Failed to generate metadata:', error);
-            res.status(500).json({ error: 'Failed to generate metadata' });
-        }
-    }
-    /**
-     * Health check endpoint
+     * Health check
      */
     health(req, res) {
         res.json({
             status: 'ok',
-            service: 'auth',
-            timestamp: new Date().toISOString(),
-            samlEnabled: ENABLE_SAML
+            samlEnabled: ENABLE_SAML,
+            samlConfigured: !!process.env.SAML_ENTRY_POINT,
+            environment: process.env.NODE_ENV
         });
     }
     /**
-     * Development login (for testing without AWS SSO)
-     */
-    devLogin(req, res) {
-        if (process.env.NODE_ENV !== 'development' && !process.env.ALLOW_DEV_LOGIN) {
-            return res.status(403).json({ error: 'Development only endpoint' });
-        }
-        const { email = 'developer@company.com', name = 'Developer', returnTo = '/chat' } = req.query;
-        const mockUserInfo = {
-            email: email,
-            name: name,
-            firstName: name.split(' ')[0],
-            lastName: name.split(' ').slice(1).join(' '),
-            company: 'Development',
-            groups: ['developers'],
-            samlSessionIndex: 'dev-session-' + Date.now(),
-            domain: email.split('@')[1] || 'company.com'
-        };
-        const { token, expiresAt } = sessionService.createSession(mockUserInfo);
-        sessionService.setSessionCookie(res, token, expiresAt);
-        if (ENABLE_SAML && req.login) {
-            req.login(mockUserInfo, (err) => {
-                if (err)
-                    console.error('Passport dev login error:', err);
-            });
-        }
-        const redirectUrl = returnTo;
-        if (process.env.FRONTEND_URL && !redirectUrl.startsWith('http')) {
-            const frontendUrl = process.env.FRONTEND_URL + redirectUrl;
-            return res.redirect(frontendUrl);
-        }
-        res.redirect(redirectUrl);
-    }
-    /**
-     * Check if user is authenticated
+     * Check auth status
      */
     checkAuth(req, res) {
         if (req.user) {

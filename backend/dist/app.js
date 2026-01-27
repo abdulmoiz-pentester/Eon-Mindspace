@@ -3,6 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const morgan_1 = __importDefault(require("morgan"));
@@ -12,8 +14,6 @@ const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const apiRoutes_1 = __importDefault(require("./routes/apiRoutes"));
 const errorMiddleware_1 = require("./middlewares/errorMiddleware");
 const session_middleware_1 = require("./middlewares/session.middleware");
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
 const app = (0, express_1.default)();
 // Enable SAML authentication (feature flag)
 const ENABLE_SAML = process.env.ENABLE_SAML === 'true' || process.env.NODE_ENV === 'production';

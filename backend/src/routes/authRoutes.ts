@@ -5,23 +5,34 @@ import { requireAuth, optionalAuth } from '../middlewares/authMiddleware';
 const router = Router();
 const authController = new AuthController();
 
-// Public routes
+// IMPORTANT: Since app.ts has app.use('/auth', authRoutes),
+// all routes here are automatically prefixed with /auth
+
+// =================== PUBLIC ROUTES ===================
+// SAML Login initiation
 router.get('/login', (req, res) => authController.login(req, res));
-router.post('/acs', (req, res) => authController.acs(req, res));
+
+// SAML Callback (Keycloak posts here)
+router.post('/saml/callback', (req, res) => authController.samlCallback(req, res));
+
+// SAML Metadata (for Keycloak configuration)
 router.get('/metadata', (req, res) => authController.getMetadata(req, res));
+
+// Health check
 router.get('/health', (req, res) => authController.health(req, res));
 
-// SAML-specific routes
-router.post('/saml/callback', (req, res, next) => authController.samlCallback(req, res, next));
-router.get('/saml/metadata', (req, res) => authController.getSamlMetadata(req, res));
-
-// Development routes
-router.post('/dev/login', (req, res) => authController.devLogin(req, res));
+// =================== DEV/DEBUG ROUTES ===================
+// Development login (bypass SAML)
 router.get('/dev/login', (req, res) => authController.devLogin(req, res));
 
-// Protected routes
+// =================== PROTECTED ROUTES ===================
+// Get current session (requires authentication)
 router.get('/session', requireAuth, (req, res) => authController.getSession(req, res));
+
+// Logout (requires authentication)
 router.post('/logout', requireAuth, (req, res) => authController.logout(req, res));
+
+// Check auth status (optional auth - returns status)
 router.get('/check', optionalAuth, (req, res) => authController.checkAuth(req, res));
 
 export default router;

@@ -2,13 +2,13 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Shield, Lock, CheckCircle2, LogIn } from "lucide-react";
-import eonLogo from "@/assets/eon-logo.png";
+import eonLogo from "@/assets/eon_black_transparent.png";
 
 const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if already authenticated
+   
     const checkAuth = async () => {
       try {
         const response = await fetch('/auth/check', {
@@ -28,7 +28,7 @@ const Login = () => {
   }, [navigate]);
 
   const handleSSOLogin = () => {
-  // CORRECT: Backend runs on port 5000
+
   window.location.href = 'http://localhost:5000/auth/login';
 };
 

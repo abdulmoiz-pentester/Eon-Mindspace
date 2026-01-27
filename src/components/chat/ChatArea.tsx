@@ -3,7 +3,7 @@ import { Shield, Lock, Key, FileCheck, Zap, Globe } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { cn } from "../../lib/utils";
-import eonLogo from "./assets/eon-logo.png";
+import eonLogo from "@/assets/eon_black_transparent.png";
 
 interface Message {
   id: string;
@@ -80,7 +80,7 @@ export function ChatArea({
             {/* Logo with enhanced animation */}
             <div className="relative mb-8">
               <div className="w-24 h-24 rounded-2xl medical-gradient flex items-center justify-center shadow-medical-lg animate-float">
-                {/*<img src={eonLogo} alt="Eon" className="h-12 w-auto brightness-0 invert" />*/}
+                <img src={eonLogo} alt="Eon" className="h-12 w-auto brightness-0 invert" />
               </div>
               <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-2xl animate-pulse-ring" />
               <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 blur-3xl animate-pulse opacity-50" />

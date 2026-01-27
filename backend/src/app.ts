@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -8,9 +10,9 @@ import authRoutes from "./routes/authRoutes";
 import apiRoutes from "./routes/apiRoutes";
 import { errorHandler } from "./middlewares/errorMiddleware";
 import { sessionMiddleware } from "./middlewares/session.middleware";
-import dotenv from "dotenv";
 
-dotenv.config();
+
+
 
 const app = express();
 
