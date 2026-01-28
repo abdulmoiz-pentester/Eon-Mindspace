@@ -13,31 +13,32 @@ class AuthController {
      */
     async login(req, res) {
         try {
-            console.log('=== LOGIN REQUEST ===');
             const returnTo = req.query.returnTo || '/';
+            console.log('=== LOGIN INIT ===');
+            console.log('Query returnTo:', returnTo);
+            console.log('SAML Enabled:', ENABLE_SAML);
             if (ENABLE_SAML) {
-                console.log('🔐 Initiating SAML login to Keycloak');
-                // Store returnTo in session
-                if (req.session) {
+                if (req.session)
                     req.session.returnTo = returnTo;
-                }
-                // Use SAMLService to generate proper SAML login URL
-                const loginUrl = await samlService.generateLoginUrl(returnTo);
-                console.log('✅ Generated SAML login URL');
-                console.log('Redirecting to Keycloak');
-                return res.redirect(loginUrl);
+                console.log('Session returnTo set:', req.session?.returnTo);
+                // Generate POST binding login form
+                console.log('Generating SAML login form...');
+                const formHtml = await samlService.generateLoginForm(returnTo);
+                console.log('SAML login form generated successfully');
+                // Force no caching
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+                res.setHeader('Surrogate-Control', 'no-store');
+                res.send(formHtml); // renders auto-submitting form
             }
             else {
-                console.log('🔧 SAML not available, using dev login');
-                return res.redirect(`/auth/dev/login?returnTo=${encodeURIComponent(returnTo)}`);
+                res.redirect(`/auth/dev/login?returnTo=${encodeURIComponent(returnTo)}`);
             }
         }
         catch (error) {
             console.error('❌ Login initiation failed:', error);
-            res.status(500).json({
-                error: 'Failed to initiate login',
-                message: error instanceof Error ? error.message : 'Unknown error'
-            });
+            res.status(500).json({ error: 'Failed to initiate login' });
         }
     }
     /**
@@ -45,29 +46,27 @@ class AuthController {
      */
     async samlCallback(req, res) {
         try {
-            console.log('=== SAML CALLBACK ===');
-            console.log('Method:', req.method);
-            console.log('Body:', req.body);
+            console.log('=== SAML CALLBACK HIT ===');
+            console.log('HTTP Method:', req.method);
+            console.log('Request Body:', req.body);
+            console.log('Session Data:', req.session);
             if (!ENABLE_SAML) {
-                console.error('❌ SAML not enabled');
-                return res.status(400).json({ error: 'SAML authentication is not enabled' });
+                console.error('SAML authentication is not enabled');
+                return res.status(400).json({ error: 'SAML not enabled' });
             }
             const { SAMLResponse, RelayState } = req.body;
             if (!SAMLResponse) {
                 console.error('❌ No SAMLResponse in request body');
                 return res.status(400).json({ error: 'No SAML response provided' });
             }
-            console.log('📥 Processing SAML response from Keycloak...');
-            // Process SAML response using SAMLService
+            console.log('Processing SAMLResponse...');
             const samlUser = await samlService.processResponse(SAMLResponse, RelayState);
-            // Extract user information from SAML response
+            console.log('Raw SAML user returned:', JSON.stringify(samlUser, null, 2));
             const userInfo = this.extractUserInfo(samlUser);
-            console.log('✅ SAML authentication successful for:', userInfo.email);
-            // Create session token
+            console.log('Extracted user info:', userInfo);
             const { token, expiresAt } = sessionService.createSession(userInfo);
-            // Set session cookie
             sessionService.setSessionCookie(res, token, expiresAt);
-            // Set user info cookie for frontend
+            console.log('Session cookie set:', token);
             res.cookie('user_info', JSON.stringify({
                 email: userInfo.email,
                 name: userInfo.name,
@@ -81,32 +80,22 @@ class AuthController {
                 httpOnly: false
             });
             // Determine where to redirect
-            let redirectTo = '/';
-            // Priority: 1. RelayState from SAML response, 2. session.returnTo
-            if (RelayState) {
-                redirectTo = RelayState;
-                console.log('📌 Using RelayState from SAML response:', redirectTo);
-            }
-            else if (req.session?.returnTo) {
-                redirectTo = req.session.returnTo;
-                console.log('📌 Using returnTo from session:', redirectTo);
+            let redirectTo = RelayState || req.session?.returnTo || '/';
+            console.log('Redirect target before normalization:', redirectTo);
+            if (req.session?.returnTo)
                 delete req.session.returnTo;
-            }
-            console.log('🔀 Final redirect to:', redirectTo);
-            // Redirect to frontend or directly
             const frontendUrl = process.env.FRONTEND_URL;
             if (frontendUrl && !redirectTo.startsWith('http')) {
                 const normalizedPath = redirectTo.startsWith('/') ? redirectTo : `/${redirectTo}`;
-                const finalUrl = `${frontendUrl}${normalizedPath}`;
-                console.log('🚀 Redirecting to frontend:', finalUrl);
-                return res.redirect(finalUrl);
+                redirectTo = `${frontendUrl}${normalizedPath}`;
             }
-            return res.redirect(redirectTo);
+            console.log('Final redirect URL:', redirectTo);
+            res.redirect(redirectTo);
         }
         catch (error) {
             console.error('❌ SAML callback failed:', error);
             const errorMsg = encodeURIComponent(error instanceof Error ? error.message : 'Authentication failed');
-            return res.redirect(`/auth/login?error=${errorMsg}`);
+            res.redirect(`/auth/login?error=${errorMsg}`);
         }
     }
     /**
