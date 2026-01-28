@@ -29,7 +29,7 @@ const Login = () => {
 
   const handleSSOLogin = () => {
 
-  window.location.href = 'http://localhost:5000/auth/login';
+  window.location.href = 'http://localhost:5000/auth/saml/login';
 };
 
   const features = [

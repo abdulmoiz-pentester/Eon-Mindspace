@@ -220,14 +220,29 @@ const Index = () => {
     });
   }, [messages, toast]);
 
-  const handleSignOut = useCallback(() => {
-    signOut();
-    toast({
-      title: "Signed out",
-      description: "You've been signed out successfully.",
+  const handleSignOut = useCallback(async () => {
+  // clear frontend state
+  signOut();
+
+  toast({
+    title: "Signed out",
+    description: "You've been signed out successfully.",
+  });
+
+  try {
+    // destroy backend session
+    await fetch("http://localhost:5000/auth/saml/logout", {
+      method: "POST",
+      credentials: "include",
     });
-    navigate("/login");
-  }, [signOut, toast, navigate]);
+  } catch (e) {
+    console.error("Backend logout failed", e);
+  }
+
+  // redirect to SAML IdP logout (this replaces navigate)
+  window.location.href =
+    "http://localhost:8080/login";
+}, [signOut, toast]);
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {

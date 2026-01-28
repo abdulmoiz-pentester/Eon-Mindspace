@@ -3,23 +3,22 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
-import session from "express-session";
 import passport from "passport";
-import cookieParser from "cookie-parser"; // ← ADD THIS
+import cookieParser from "cookie-parser";
+import session from "express-session";
 import authRoutes from "./routes/authRoutes";
 import apiRoutes from "./routes/apiRoutes";
 import { errorHandler } from "./middlewares/errorMiddleware";
 import { sessionMiddleware } from "./middlewares/session.middleware";
 
-
-
+// ← Import SAML strategy BEFORE passport.init
+if (process.env.ENABLE_SAML === 'true' || process.env.NODE_ENV === 'production') {
+  import('./config/passport').catch(err => console.error('Failed to load SAML strategy:', err));
+}
 
 const app = express();
 
-// Enable SAML authentication (feature flag)
-const ENABLE_SAML = process.env.ENABLE_SAML === 'true' || process.env.NODE_ENV === 'production';
-
-// Request logging middleware
+// Logging
 app.use((req, res, next) => {
   console.log(`🌐 ${req.method} ${req.originalUrl}`);
   next();
@@ -32,13 +31,11 @@ app.use(cors({
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); // ← ADD THIS LINE (important for reading cookies)
-
-// Session middleware (for SAML)
+app.use(cookieParser());
 app.use(sessionMiddleware);
 
-// Initialize Passport for SAML if enabled
-if (ENABLE_SAML) {
+// Initialize Passport
+if (process.env.ENABLE_SAML === 'true' || process.env.NODE_ENV === 'production') {
   app.use(passport.initialize());
   app.use(passport.session());
   console.log('SAML authentication enabled');
@@ -50,23 +47,12 @@ if (ENABLE_SAML) {
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
 
-// Add a test route to verify
-app.get('/auth/test', (req, res) => {
-  console.log('✅ /auth/test route called');
-  res.json({ 
-    message: 'Auth routes are working!',
-    timestamp: new Date().toISOString(),
-    cookies: req.cookies
-  });
-});
 
-// Error middleware
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🔐 SAML Authentication: ${ENABLE_SAML ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`🔐 SAML Authentication: ${process.env.ENABLE_SAML === 'true' ? 'ENABLED' : 'DISABLED'}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:8080'}`);
-  console.log(`🔧 Development mode: ${process.env.NODE_ENV || 'development'}`);
 });

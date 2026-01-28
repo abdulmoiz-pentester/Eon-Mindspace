@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { getBedrockAgentResponse } from "../controllers/bedrockController";
-import { requireAuth, requireCompanyDomain } from '../middlewares/authMiddleware';
+
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
 
 // Protected API endpoints
 router.post("/bedrock-agent", 
-     //requireAuth,  
+    // requireAuth,  
   getBedrockAgentResponse
 );
 
