@@ -1,4 +1,0 @@
-project_id = "ldojhqlycjhcklmruqef"
-
-[functions.chat-bedrock]
-verify_jwt = false
