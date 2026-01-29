@@ -1,18 +1,45 @@
-# Backend specific .gitignore
+# Dependencies
 node_modules/
+
+# Compiled output
 dist/
+build/
+
+# Logs
 logs/
 *.log
+
+# Environment
 .env
-.env.local
-.DS_Store
-*.pid
-*.seed
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.nyc_output/
+.env.*
+!.env.example
+
+# Sessions & temp
+sessions/
+tmp/
+.temp/
+.cache/
+
+# Coverage
 coverage/
-*.lcov
+
+# Uploads or runtime storage
+uploads/
+storage/
+blob_storage/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# TypeScript cache
 *.tsbuildinfo
+
+# Test artifacts
+tests/output/
+tests/tmp/
+
+# Lockfile backups
+package.json.bak

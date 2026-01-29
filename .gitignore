@@ -1,94 +1,75 @@
-# ===== NODE/NPM =====
+# Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-package-lock.json
-package.json.bak
-bun.lockb
 
-# ===== ENVIRONMENT FILES =====
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.*.local
-.env.backup
-.env.example
-
-# ===== BUILDS AND DISTRIBUTION =====
+# Build outputs
 dist/
 build/
-out/
-.next/
-.nuxt/
-.output/
+.vite/
 
-# ===== BACKEND SPECIFIC =====
-backend/dist/
-backend/node_modules/
-
-# ===== RUNTIME DATA =====
+# Logs
 logs/
 *.log
-*.pid
-*.seed
-*.pid.lock
-pids/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
 
-# ===== CACHES =====
-.cache/
-.tmp/
-.temp/
-tmp/
-temp/
+# Environment files
+.env
+.env.*
+!.env.example
 
-# ===== OS AND EDITOR FILES =====
+# OS / editor
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-*.swp
-*~
-~$
-*.sublime-*
-
-# ===== IDE FILES =====
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# ===== TESTING =====
+# Cache & temp
+.cache/
+.temp/
+tmp/
+*.tmp
+
+# Test coverage
 coverage/
-.nyc_output/
 
-# ===== SSL CERTIFICATES =====
-*.pem
-*.key
-*.crt
+# Service worker build artifacts
+sw.js
+workbox-*
 
-# ===== MISC =====
-*.tgz
-*.tar.gz
-*.zip
+# Local storage / runtime data
+Local Storage/
+WebStorage/
+Cookies*
+Network Persistent State
+TransportSecurity
+Trust Tokens*
 
-/Cache/
-/DawnGraphiteCache/
-/DawnWebGPUCache/
-/GPUCache/
-/User/
-/Network Persistent State
-/Local Storage/
-/Session Storage/
-/IndexedDB/
-/flux/
-/Service Worker/
-/Dictionaries/
-/CachedConfigurations/  
+# Supabase local artifacts (if local dev)
+supabase/.temp/
+supabase/.cache/
+
+# Misc project runtime data seen in tree
+blob_storage/
+logs/
+Cache/
+CachedData/
+CachedConfigurations/
+CachedExtensionVSIXs/
+CachedProfilesData/
+Code Cache/
+Crashpad/
+GPUCache/
+DawnGraphiteCache/
+DawnWebGPUCache/
+Shared Dictionary/
+Service Worker/
+User/
+Backups/
+
+# Lockfiles you usually don't need multiple of
+bun.lockb
+
+# Machine specific
+machineid
+*.sock
