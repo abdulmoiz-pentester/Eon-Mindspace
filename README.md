@@ -1,73 +1,107 @@
-# Welcome to your Lovable project
+# Eon Mindspace
 
-## Project info
+Eon Mindspace is a security-focused chatbot platform powered by Amazon Bedrock, delivering intelligent assistance through a modern web interface with secure SSO authentication.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Table of Contents
 
-## How can I edit this code?
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Requirements](#requirements)
+- [Backend Setup](#backend-setup)
+- [Frontend Setup](#frontend-setup)
+- [Running the App](#running-the-app)
+- [Environment Variables](#environment-variables)
+- [Screenshots](#screenshots)
+- [License](#license)
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+- **Secure chatbot interface**
+- **Bedrock-powered AI responses**
+- **SSO authentication**
+- Express API backend
+- End-to-end TypeScript
+- Modern React UI
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+| Layer     | Technology                |
+|-----------|---------------------------|
+| Frontend  | React, TypeScript         |
+| Backend   | Express, TypeScript       |
+| Auth      | SSO                       |
+| AI        | Amazon Bedrock            |
 
-**Use your preferred IDE**
+> Frontend lives in the project root, backend API runs from `/backend`.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Project Structure
+Eon-Mindspace/
+├─ src/ # React frontend source
+├─ public/ # Static assets
+├─ backend/ # Express API backend
+├─ index.html
+├─ package.json
+└─ backend/.env.example
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+text
 
-Follow these steps:
+## Requirements
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Node.js (recommended via nvm)
+- npm
+- Backend environment configuration for Bedrock and SSO
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Backend Setup
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. **Move to backend folder:**
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+   ```bash
+   cd backend
+Install dependencies:
+
+bash
+npm install
+Create environment file:
+
+bash
+cp .env.example .env
+Configure the required environment variables (see Environment Variables section)
+
+Compile TypeScript:
+
+bash
+npx tsc
+Start backend:
+
+bash
+npx ts-node src/app.ts
+Backend runs on the port configured in .env.
+
+Frontend Setup
+From project root, install dependencies:
+
+bash
+npm install
+Start frontend:
+
+bash
 npm run dev
-```
+Frontend typically runs at http://localhost:5173
 
-**Edit a file directly in GitHub**
+Running the App
+Start backend first, then frontend, then open the frontend URL in your browser to access Eon Mindspace.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Environment Variables
+Variable	Description
+ENABLE_SAML	Enable SAML authentication
+ALLOW_DEV_LOGIN	Allow developer login
+SAML_ENTRY_POINT	Keycloak SAML entry URL
+SAML_ISSUER	SAML issuer identifier
+SAML_IDP_CERT	Identity Provider certificate
+BEDROCK_API_KEY	Amazon Bedrock API key
+Screenshots
+(Add screenshots here if available)
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+License
+Internal / proprietary project.
