@@ -1,58 +1,110 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import passport from "passport";
 import cookieParser from "cookie-parser";
 import session from "express-session";
+
 import authRoutes from "./routes/authRoutes";
 import apiRoutes from "./routes/apiRoutes";
 import { errorHandler } from "./middlewares/errorMiddleware";
-import { sessionMiddleware } from "./middlewares/session.middleware";
-
-// ← Import SAML strategy BEFORE passport.init
-if (process.env.ENABLE_SAML === 'true' || process.env.NODE_ENV === 'production') {
-  import('./config/passport').catch(err => console.error('Failed to load SAML strategy:', err));
-}
 
 const app = express();
 
-// Logging
-app.use((req, res, next) => {
-  console.log(`🌐 ${req.method} ${req.originalUrl}`);
-  next();
-});
+// ==================== CORS ====================
+const corsOptions = {
+origin: process.env.FRONTEND_URL || "http://localhost:8080",
+credentials: true,
+methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+};
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:8080",
-  credentials: true
-}));
+app.use(cors(corsOptions));
+
+// ==================== Core Middleware ====================
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(sessionMiddleware);
 
-// Initialize Passport
-if (process.env.ENABLE_SAML === 'true' || process.env.NODE_ENV === 'production') {
-  app.use(passport.initialize());
-  app.use(passport.session());
-  console.log('SAML authentication enabled');
+// ==================== Session ====================
+app.use(
+session({
+name: "eon.sid",
+secret: process.env.SESSION_SECRET || "dev-secret",
+resave: false,
+saveUninitialized: false,
+cookie: {
+secure: process.env.NODE_ENV === "production",
+httpOnly: true,
+sameSite: "lax",
+maxAge: 24 * 60 * 60 * 1000,
+},
+})
+);
+app.use((req, res, next) => {
+  console.log('\n=== REQUEST DEBUG ===');
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  console.log('Session ID:', req.sessionID);
+  console.log('Session:', req.session);
+  console.log('Cookies:', req.cookies);
+  console.log('Headers:', req.headers);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('Body keys:', Object.keys(req.body));
+    // Don't log full SAML response (it's huge)
+    if (req.body.SAMLResponse) {
+      console.log('Has SAMLResponse (truncated):', req.body.SAMLResponse.substring(0, 100) + '...');
+    }
+  }
+  console.log('=====================\n');
+  next();
+});
+
+// ==================== Passport ====================
+// IMPORTANT: load passport config ONLY when needed
+if (process.env.ENABLE_SAML === "true" || process.env.NODE_ENV === "production") {
+require("./config/passport");
+console.log("✅ SAML strategy registered");
 } else {
-  console.log('Running with development/local authentication');
+console.log("⚠️ SAML disabled (dev mode)");
 }
 
-// Routes
+app.use(passport.initialize());
+app.use(passport.session());
+
+// ==================== Routes ====================
+app.get("/", (req, res) => {
+res.redirect("http://localhost:8080/login");
+});
+
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
 
+app.get("/health", (req, res) => {
+res.json({
+status: "OK",
+samlEnabled: process.env.ENABLE_SAML === "true",
+env: process.env.NODE_ENV,
+});
+});
 
+// ==================== 404 (EXPRESS 5 SAFE) ====================
+app.use((req, res) => {
+res.status(404).json({
+error: "Not Found",
+path: req.originalUrl,
+});
+});
+
+// ==================== Error Handler ====================
 app.use(errorHandler);
 
+// ==================== Start ====================
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🔐 SAML Authentication: ${process.env.ENABLE_SAML === 'true' ? 'ENABLED' : 'DISABLED'}`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:8080'}`);
+console.log("✅ Server running on port ${PORT}");
 });

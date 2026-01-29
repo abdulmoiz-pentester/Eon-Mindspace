@@ -1,30 +1,16 @@
 import session from 'express-session';
-import { getAWSSSOConfig } from '../config/aws.sso.config';
+import { RequestHandler } from 'express';
 
-const config = getAWSSSOConfig();
-
-/**
- * Express session middleware
- */
-export const sessionMiddleware = session({
-  name: config.session.cookieName,
-  secret: config.session.secret,
+export const sessionMiddleware: RequestHandler = session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: config.session.maxAge
-  }
+    httpOnly: true,
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost'
+  },
+  name: 'eon.sid'
 });
-
-/**
- * Add user to response locals for templates
- */
-export const userLocals = (req: any, res: any, next: any) => {
-  if (req.user) {
-    res.locals.user = req.user;
-  }
-  next();
-};
