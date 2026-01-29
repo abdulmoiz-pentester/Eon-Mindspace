@@ -21,6 +21,7 @@ const corsOptions = {
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+    exposedHeaders: ["Set-Cookie"]
 };
 app.use((0, cors_1.default)(corsOptions));
 // ==================== Core Middleware ====================
