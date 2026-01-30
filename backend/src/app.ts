@@ -16,7 +16,7 @@ const app = express();
 
 // ==================== CORS ====================
 const corsOptions = {
-origin: process.env.FRONTEND_URL || "http://localhost:8080",
+origin: process.env.FRONTEND_URL || "http://localhost:8081",
 credentials: true,
 methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
@@ -34,16 +34,16 @@ app.use(cookieParser());
 // ==================== Session ====================
 app.use(
 session({
-name: "eon.sid",
-secret: process.env.SESSION_SECRET || "dev-secret",
-resave: false,
-saveUninitialized: false,
-cookie: {
-secure: process.env.NODE_ENV === "production",
-httpOnly: true,
-sameSite: "lax",
-maxAge: 24 * 60 * 60 * 1000,
-},
+  name: "eon.sid",
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false,      // keep false for localhost
+    sameSite: 'lax',    // 'lax' works for redirect-based login
+    maxAge: 24 * 60 * 60 * 1000,
+  },
 })
 );
 app.use((req, res, next) => {
@@ -66,7 +66,8 @@ app.use((req, res, next) => {
 
 // ==================== Passport ====================
 // IMPORTANT: load passport config ONLY when needed
-if (process.env.ENABLE_SAML === "true" || process.env.NODE_ENV === "production") {
+if (process.env.ENABLE_SAML === "true")
+{
 require("./config/passport");
 console.log("✅ SAML strategy registered");
 } else {
@@ -78,7 +79,7 @@ app.use(passport.session());
 
 // ==================== Routes ====================
 app.get("/", (req, res) => {
-res.redirect("http://localhost:8080/login");
+  res.redirect(process.env.FRONTEND_URL!);
 });
 
 app.use("/auth", authRoutes);
