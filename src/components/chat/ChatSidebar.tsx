@@ -37,11 +37,7 @@ interface ChatSidebarProps {
   onSelectChat: (id: string) => void;
   onNewChat: () => void;
   onDeleteChat: (id: string) => void;
-  user: {
-    name: string;
-    email: string;
-    avatar?: string;
-  } | null;
+ user: { name: string; avatar?: string } | null;
   onSignOut: () => void;
 }
 
@@ -224,7 +220,7 @@ export function ChatSidebar({
                         {user.name}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {user.email}
+                        {user?.name || "Guest" }
                       </p>
                     </div>
                     <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
