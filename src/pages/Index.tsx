@@ -6,6 +6,8 @@ import { ChatHeader } from "@/components/chat/ChatHeader";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { sendToAgent } from "@/lib/bedrock-api";
+import { useAuth } from "@/hooks/useAuth";
+
 
 interface Message {
   id: string;
@@ -26,13 +28,17 @@ const CHAT_HISTORY_KEY = "eon_chat_history";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user, loading, signOut } = useGoogleAuth();
+ // const { user, loading, signOut } = useGoogleAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user, loading, signOut } = useAuth();
+  const mappedUser = user
+    ? { name: user.email || user.userId, avatar: undefined }
+    : null;
 
   // Load chat history from localStorage on mount
   useEffect(() => {
@@ -220,31 +226,13 @@ const Index = () => {
     });
   }, [messages, toast]);
 
- const handleSignOut = useCallback(async () => {
+ const handleSignOut = useCallback(() => {
   try {
-    // Clear frontend state
-    signOut();
-    
-    // Call backend logout
-    await fetch("http://localhost:5000/auth/saml/logout", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    // Clear any local storage
+    signOut(); // clear frontend state
     localStorage.removeItem(CHAT_HISTORY_KEY);
-    
-    toast({
-      title: "Signed out",
-      description: "You've been signed out successfully.",
-    });
-    
-    // Redirect to login page
-    window.location.href = "/login";
-    
+
+    // Redirect directly to backend logout (follows IdP redirect properly)
+    window.location.href = "http://localhost:5000/auth/saml/logout";
   } catch (e) {
     console.error("Logout failed", e);
     toast({
@@ -254,6 +242,7 @@ const Index = () => {
     });
   }
 }, [signOut, toast]);
+
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {
@@ -332,6 +321,7 @@ const Index = () => {
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
+      
       {/* Sidebar */}
       <ChatSidebar
         isCollapsed={sidebarCollapsed}
@@ -341,7 +331,7 @@ const Index = () => {
         onSelectChat={handleSelectChat}
         onNewChat={handleNewChat}
         onDeleteChat={handleDeleteChat}
-        user={user}
+        user={mappedUser}
         onSignOut={handleSignOut}
       />
 
@@ -359,7 +349,7 @@ const Index = () => {
           isLoading={isLoading}
           onSend={handleSend}
           onRegenerate={handleRegenerate}
-          user={user}
+          user={mappedUser}
         />
       </main>
     </div>
