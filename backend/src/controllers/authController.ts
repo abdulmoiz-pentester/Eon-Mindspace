@@ -1,186 +1,200 @@
 import { Request, Response, NextFunction } from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
+import { defaultProvider } from "@aws-sdk/credential-provider-node";
+import { AwsCredentialIdentity } from '@aws-sdk/types';
+import { STSClient, AssumeRoleWithSAMLCommand } from "@aws-sdk/client-sts";
+import 'express-session';
 
-  class AuthController {
-  // SAML Login - FIXED VERSION
-  login(req: Request, res: Response, next: NextFunction) {
-    console.log('🔐 [DEBUG] SAML Login initiated');
-    console.log('🔐 [DEBUG] Session ID:', req.sessionID);
-    console.log('🔐 [DEBUG] Session:', req.session);
-    console.log('🔐 [DEBUG] Is authenticated before login:', req.isAuthenticated ? req.isAuthenticated() : 'N/A');
-    
-    passport.authenticate('saml', {
-      failureRedirect: '/login',
-      failureFlash: true,
-    })(req, res, next);
+declare module 'express-session' {
+  interface SessionData {
+    awsCredentials?: AwsCredentialIdentity;
   }
-async proceedWithAuth(req: Request, res: Response, user: any) {
-    console.log('✅ [DEBUG] Proceeding with auth for user:', user.nameID);
-    
-    // Generate JWT token
+}
+
+const stsClient = new STSClient({ region: 'us-west-2' });
+
+// SAML User type
+interface SamlUser {
+  nameID: string;
+  email?: string;
+  sessionIndex?: string;
+  [key: string]: any;
+}
+
+// Extended Request to include typed user
+export interface AuthRequest extends Request {
+  user?: SamlUser;
+}
+
+class authController {
+  // ==================== SAML Login ====================
+ async login(req: AuthRequest, res: Response, next: NextFunction) {
+      try {
+    const awsCredentials = await defaultProvider()(); // auto picks up default SSO login
+    req.session.awsCredentials = awsCredentials; // store in session
+    console.log("✅ AWS credentials stored in session:", {
+      accessKeyId: awsCredentials.accessKeyId,
+      hasSessionToken: !!awsCredentials.sessionToken,
+      expiration: awsCredentials.expiration?.toISOString(),
+    });
+  } catch (e) {
+    console.error("❌ Failed to load AWS credentials from SSO:", e);
+  }
+  const token = req.cookies.jwt;
+
+  // 1️⃣ JWT exists → redirect directly
+  if (token) {
+    try {
+      jwt.verify(token, process.env.JWT_SECRET!);
+      console.log('✅ JWT valid, redirecting to chatbot');
+      return res.redirect('http://localhost:8081/');
+    } catch {
+      console.log('⚠️ JWT invalid or expired, continue to SSO login');
+    }
+  }
+
+  // 2️⃣ Check if SSO session exists
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    console.log('🔐 SSO session active, issuing JWT silently');
+    const user = req.user as SamlUser;
+
     const token = jwt.sign(
-      { 
-        userId: user.nameID || user.email || 'unknown-user',
-        email: user.email || user.nameID || 'unknown@example.com',
-        sessionId: req.sessionID 
+      {
+        userId: user.nameID,
+        email: user.email || user.nameID,
+        sessionId: req.sessionID,
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET!,
       { expiresIn: '24h' }
     );
 
-    // Set JWT in HTTP-only cookie
     res.cookie('jwt', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
-    console.log('✅ [DEBUG] JWT token set, redirecting to frontend');
-    
-    // Redirect to frontend
-    res.redirect('http://localhost:8080/');
+    return res.redirect('http://localhost:8081/');
   }
-  // SAML Callback
-    // SAML Callback - FIXED VERSION
-  callback(req: Request, res: Response, next: NextFunction) {
-  console.log('🔄 [DEBUG] SAML Callback received - FORCING SUCCESS');
-  
-  // TRY to authenticate normally first
-  passport.authenticate('saml', { 
-    failureRedirect: 'http://localhost:8080/login',
-    failureFlash: true 
-  })(req, res, (err: any, user: any, info: any) => {
-    console.log('🔍 [DEBUG] Authentication result - Error:', err?.message);
-    console.log('🔍 [DEBUG] Authentication result - User:', user?.nameID);
-    //console.log('🔍 [DEBUG] Authentication result - req.user:', req.user?.nameID);
-    
-    // ALWAYS create a user, even if authentication fails
-    const authenticatedUser = user || req.user || {
-      nameID: 'testuser@example.com',
-      email: 'testuser@example.com',
-      issuer: 'eon-mindspace-app'
-    };
-    
-    console.log('✅ [DEBUG] Using user:', authenticatedUser.nameID);
-    
-    // Manually login
-    req.login(authenticatedUser, (loginErr) => {
-      if (loginErr) {
-        console.error('❌ [DEBUG] req.login error:', loginErr);
-      }
-      
-      // Generate JWT token
-      const token = jwt.sign(
-        { 
-          userId: authenticatedUser.nameID,
-          email: authenticatedUser.email || authenticatedUser.nameID,
-          sessionId: req.sessionID 
-        },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '24h' }
-      );
 
-      // Set JWT cookie
-      res.cookie('jwt', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000
-      });
-
-      console.log('✅ [DEBUG] JWT set, redirecting to frontend');
-      res.redirect('http://localhost:8080/');
-    });
-  });
+  // 3️⃣ Otherwise → normal SAML login
+  console.log('🔐 No JWT or SSO session, starting SAML login');
+  passport.authenticate('saml', {
+    failureRedirect: '/login',
+    failureFlash: true,
+  })(req, res, next);
 }
 
 
-  // Logout
-  async logout(req: Request, res: Response) {
-    // Clear JWT cookie
-    res.clearCookie('jwt');
-    
-    req.logout((err) => {
-      if (err) {
-        console.error('Logout error:', err);
-      }
 
-      // Destroy session
+  // ==================== SAML Callback ====================
+
+callback(req: AuthRequest, res: Response, next: NextFunction) {
+  passport.authenticate('saml', { failureRedirect: 'http://localhost:8081/login' })(req, res, async () => {
+    if (!req.user) return res.redirect('http://localhost:8081/login');
+
+    const authenticatedUser = req.user;
+
+    // No AWS credentials stuff here
+
+    const token = jwt.sign(
+      { userId: authenticatedUser.nameID, email: authenticatedUser.email || authenticatedUser.nameID, sessionId: req.sessionID },
+      process.env.JWT_SECRET!,
+      { expiresIn: '24h' }
+    );
+
+    res.cookie('jwt', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 24*60*60*1000 });
+    res.redirect('http://localhost:8081/');
+  });
+}
+
+  // ==================== Logout ====================
+async logout(req: AuthRequest, res: Response) {
+  try {
+    // 1️⃣ Logout Passport
+    await new Promise<void>((resolve, reject) => {
+      req.logout((err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+
+    // 2️⃣ Destroy session
+    await new Promise<void>((resolve, reject) => {
       req.session.destroy((err) => {
         if (err) {
           console.error('Session destroy error:', err);
+          return reject(err);
         }
-
-        // Clear session cookie
-        res.clearCookie('connect.sid');
-        
-        // Redirect to IdP logout or frontend login
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-        const idpLogoutUrl = process.env.SAML_LOGOUT_URL || 'https://fujifish.github.io/samling/samling.html?action=logout';
-        
-        // For SAML, redirect to IdP logout
-        if (process.env.ENABLE_SAML === 'true') {
-          res.redirect(idpLogoutUrl);
-        } else {
-          res.redirect(`${frontendUrl}/login`);
-        }
+        resolve();
       });
     });
-  }
 
-  // Check authentication status
-  checkAuth(req: Request, res: Response) {
-    const token = req.cookies.jwt;
-    
-    if (!token) {
-      return res.json({ authenticated: false });
+    // 3️⃣ Clear cookies
+    res.clearCookie('jwt', { path: '/' });
+res.clearCookie('connect.sid', { path: '/' });
+
+    // 4️⃣ Redirect to SSO logout or frontend login
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
+    const idpLogoutUrl = process.env.SAML_LOGOUT_URL || '';
+
+    if (process.env.ENABLE_SAML === 'true' && idpLogoutUrl) {
+      console.log('🔐 Redirecting to SSO logout');
+      return res.redirect(idpLogoutUrl);
     }
+
+    res.redirect(`${frontendUrl}/login`);
+  } catch (err) {
+    console.error('Logout failed:', err);
+    res.status(500).send('Failed to logout');
+  }
+}
+
+
+
+
+  // ==================== Check Auth Status ====================
+  checkAuth(req: AuthRequest, res: Response) {
+    const token = req.cookies.jwt;
+    if (!token) return res.json({ authenticated: false });
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      res.json({ 
-        authenticated: true, 
-        user: decoded 
-      });
-    } catch (error) {
+      res.json({ authenticated: true, user: decoded });
+    } catch {
       res.json({ authenticated: false });
     }
   }
 
-  // Protected route middleware
-  requireAuth(req: Request, res: Response, next: NextFunction) {
+  // ==================== Get Current User ====================
+  getCurrentUser(req: AuthRequest, res: Response) {
     const token = req.cookies.jwt;
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      (req as any).user = decoded;
-      next();
-    } catch (error) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      res.json({ user: decoded });
+    } catch {
       res.status(401).json({ error: 'Invalid token' });
     }
   }
 
-  // Get current user
-  getCurrentUser(req: Request, res: Response) {
-    const token = req.cookies.jwt;
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
+  // ==================== Require Auth Middleware ====================
+  requireAuth(req: Request, res: Response, next: NextFunction) {
+  const token = req.cookies.jwt;
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      res.json({ user: decoded });
-    } catch (error) {
-      res.status(401).json({ error: 'Invalid token' });
-    }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    (req as AuthRequest).user = decoded as SamlUser; // typecast here
+    next();
+  } catch (err) {
+    console.error('Token verification error:', err);
+    res.status(401).json({ error: 'Invalid token' });
   }
 }
+}
 
-export default new AuthController();
+export default new authController();
