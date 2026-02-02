@@ -48,7 +48,7 @@ class authController {
     try {
       jwt.verify(token, process.env.JWT_SECRET!);
       console.log('✅ JWT valid, redirecting to chatbot');
-      return res.redirect('http://localhost:8081/');
+      return res.redirect('process.env.FRONTEND_URL');
     } catch {
       console.log('⚠️ JWT invalid or expired, continue to SSO login');
     }
@@ -76,7 +76,7 @@ class authController {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    return res.redirect('http://localhost:8081/');
+    return res.redirect(process.env.FRONTEND_URL!);
   }
 
   // 3️⃣ Otherwise → normal SAML login
@@ -92,8 +92,8 @@ class authController {
   // ==================== SAML Callback ====================
 
 callback(req: AuthRequest, res: Response, next: NextFunction) {
-  passport.authenticate('saml', { failureRedirect: 'http://localhost:8081/login' })(req, res, async () => {
-    if (!req.user) return res.redirect('http://localhost:8081/login');
+  passport.authenticate('saml', { failureRedirect: `${process.env.FRONTEND_URL}/login` })(req, res, async () => {
+    if (!req.user) return res.redirect(`${process.env.FRONTEND_URL}/login`);
 
     const authenticatedUser = req.user;
 
@@ -106,7 +106,7 @@ callback(req: AuthRequest, res: Response, next: NextFunction) {
     );
 
     res.cookie('jwt', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 24*60*60*1000 });
-    res.redirect('http://localhost:8081/');
+    res.redirect(process.env.FRONTEND_URL!);
   });
 }
 
@@ -137,7 +137,7 @@ async logout(req: AuthRequest, res: Response) {
 res.clearCookie('connect.sid', { path: '/' });
 
     // 4️⃣ Redirect to SSO logout or frontend login
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
+    const frontendUrl = process.env.FRONTEND_URL || 'process.env.FRONTEND_URL';
     const idpLogoutUrl = process.env.SAML_LOGOUT_URL || '';
 
     if (process.env.ENABLE_SAML === 'true' && idpLogoutUrl) {
