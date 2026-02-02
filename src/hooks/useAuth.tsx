@@ -13,7 +13,7 @@ export function useAuth() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:5000/auth/user", {
+        const res = await fetch(`${process.env.BACKEND_URL}/auth/user`, {
   credentials: "include",
 });
         if (!res.ok) throw new Error("Not authenticated");
@@ -33,7 +33,7 @@ export function useAuth() {
 
 const signOut = () => {
 setUser(null);
-window.location.href = "http://localhost:5000/auth/saml/logout";
+window.location.href = `${process.env.BACKEND_URL}/auth/saml/logout`;
 };
 
   return { user, loading, signOut };
