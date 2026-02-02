@@ -1,67 +1,85 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useToast } from "@/hooks/use-toast";
+import { Navigate, useLocation } from 'react-router-dom';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const { toast } = useToast();
+  const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+  const location = useLocation();
 
   useEffect(() => {
+    console.log('🔄 ProtectedRoute: Starting auth check');
+    console.log('📍 Current path:', location.pathname);
+    console.log('🍪 Cookies:', document.cookie);
+    
     const checkAuth = async () => {
       try {
-        const response = await fetch('http://localhost:5000/auth/check', {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        // Test if we can even reach the backend
+        console.log('🔍 Testing backend connection...');
+        
+        const timestamp = Date.now();
+        const response = await fetch(
+          `http://localhost:5000/auth/check?_=${timestamp}`,
+          {
+            credentials: 'include', // IMPORTANT: sends cookies
+            mode: 'cors',
+            cache: 'no-store',
+          }
+        );
+        
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (!response.ok) {
+          console.error('❌ Backend returned error:', response.status);
+          setAuthStatus('unauthenticated');
+          return;
+        }
         
         const data = await response.json();
-        setIsAuthenticated(data.authenticated);
+        console.log('📦 Response data:', data);
         
-        if (!data.authenticated) {
-          toast({
-            title: "Session Expired",
-            description: "Please login again to continue.",
-            variant: "destructive",
-          });
+        if (data.authenticated) {
+          console.log('✅ Authentication successful!');
+          setAuthStatus('authenticated');
+        } else {
+          console.log('❌ Not authenticated according to backend');
+          setAuthStatus('unauthenticated');
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAuthenticated(false);
-        toast({
-          title: "Connection Error",
-          description: "Unable to verify authentication. Please try again.",
-          variant: "destructive",
-        });
+        console.error('💥 Auth check failed:', error);
+        console.error('💥 Error details:', error.message);
+        setAuthStatus('unauthenticated');
       }
     };
 
     checkAuth();
-  }, [toast]);
+  }, [location.pathname]);
 
-  if (isAuthenticated === null) {
-    // Show loading state
+  // Show loading state
+  if (authStatus === 'loading') {
+    console.log('⏳ Showing loading state...');
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl medical-gradient flex items-center justify-center animate-pulse">
-            <div className="h-10 w-10 border-3 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-          </div>
-          <p className="text-muted-foreground animate-pulse">Verifying authentication...</p>
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="mt-4 text-lg font-medium text-gray-900">Checking authentication</p>
+          <p className="mt-2 text-sm text-gray-600">Please wait while we verify your session</p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  // Redirect if not authenticated
+  if (authStatus === 'unauthenticated') {
+    console.log('🔀 Redirecting to /login from:', location.pathname);
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  // Render children if authenticated
+  console.log('🎉 Rendering protected content');
   return <>{children}</>;
 };
 

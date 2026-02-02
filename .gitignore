@@ -1,75 +1,166 @@
-# Dependencies
-node_modules/
+# .gitignore for Vite + React frontend
 
-# Build outputs
-dist/
-build/
-.vite/
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
-
-# Environment files
-.env
-.env.*
-!.env.example
-
-# OS / editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-
-# Cache & temp
-.cache/
-.temp/
-tmp/
-*.tmp
-
-# Test coverage
-coverage/
-
-# Service worker build artifacts
-sw.js
-workbox-*
-
-# Local storage / runtime data
-Local Storage/
-WebStorage/
-Cookies*
-Network Persistent State
-TransportSecurity
-Trust Tokens*
-
-# Supabase local artifacts (if local dev)
-supabase/.temp/
-supabase/.cache/
-
-# Misc project runtime data seen in tree
+# ==================== BROWSER CACHE & SYSTEM FILES ====================
+Backups/
 blob_storage/
-logs/
 Cache/
-CachedData/
 CachedConfigurations/
-CachedExtensionVSIXs/
+CachedData/
 CachedProfilesData/
-Code Cache/
+'Code Cache'/
+code.lock
+Cookies
+Cookies-journal
 Crashpad/
-GPUCache/
 DawnGraphiteCache/
 DawnWebGPUCache/
-Shared Dictionary/
-Service Worker/
+Dictionaries/
+DIPS
+DIPS-wal
+GPUCache/
+'Local Storage'/
+logs/
+'Network Persistent State'/
+Preferences/
+'Service Worker'/
+'Shared Dictionary'/
+SharedStorage/
+SharedStorage-wal/
+TransportSecurity/
+'Trust Tokens'/
+'Trust Tokens-journal'/
 User/
-Backups/
-
-# Lockfiles you usually don't need multiple of
-bun.lockb
-
-# Machine specific
+WebStorage/
+languagepacks.json
 machineid
+
+# ==================== NODE & DEPENDENCIES ====================
+node_modules/
+/.pnp
+.pnp.js
+.npm
+.nvmrc
+
+# ==================== BUILD OUTPUT ====================
+dist/
+dist-ssr/
+*.local
+
+# ==================== ENVIRONMENT VARIABLES ====================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ==================== VITE CACHE ====================
+/.vite/
+/.vitepress/cache
+
+# ==================== LOGS ====================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==================== EDITOR & IDE ====================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ==================== OPERATING SYSTEM ====================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==================== LINTER CACHE ====================
+.eslintcache
+.stylelintcache
+
+# ==================== NODE REPL ====================
+.node_repl_history
+
+# ==================== PACKAGE OUTPUT ====================
+*.tgz
+
+# ==================== YARN ====================
+.yarn-integrity
+
+# ==================== PARCEL ====================
+.cache
+.parcel-cache
+
+# ==================== FRAMEWORK SPECIFIC ====================
+# Next.js
+.next
+out/
+
+# Nuxt.js
+.nuxt
+.output
+
+# Gatsby
+.cache/
+
+# VuePress
+.vuepress/dist
+
+# ==================== SERVERLESS ====================
+.serverless/
+
+# ==================== FUSEBOX ====================
+.fusebox/
+
+# ==================== DYNAMODB ====================
+.dynamodb/
+
+# ==================== TERN ====================
+.tern-port
+
+# ==================== VS CODE TEST ====================
+.vscode-test
+
+# ==================== TEMPORARY FILES ====================
+/tmp/
+/temp/
+*.tmp
+*.temp
+
+# ==================== SST ====================
+.sst/
+
+# ==================== TYPESCRIPT BUILD INFO ====================
+*.tsbuildinfo
+
+# ==================== SSC ====================
+.ssc-cache/
+
+# ==================== PWA ====================
+workbox-*.js
+workbox-*.js.map
+
+# ==================== SOCKET FILES ====================
 *.sock
+
+# ==================== KEEP THESE (COMMIT) ====================
+# !public/
+# !src/
+# !index.html
+# !package.json
+# !vite.config.ts
+# !tsconfig.json
+# !tsconfig.node.json
+# !tsconfig.app.json
+# !tailwind.config.ts
+# !postcss.config.js
+# !eslint.config.js
+# !components.json
+# !README.md
+# !.gitignore

@@ -40,36 +40,37 @@ try {
   const samlStrategy = new SamlStrategy(
     samlConfig,
     (profile: Profile | null | undefined, done: VerifiedCallback) => {
-  console.log('🔐 [DEBUG] SAML verify function called');
+      console.log('🔐 [DEBUG] SAML verify function called');
 
-  if (!profile) {
-    console.error('❌ [DEBUG] No profile found');
-    return done(new Error('No profile found'));
-  }
+      if (!profile) {
+        console.error('❌ [DEBUG] No profile found');
+        return done(new Error('No profile found'));
+      }
 
-  console.log('✅ [DEBUG] Profile object:', profile);
-  console.log('✅ [DEBUG] Profile nameID:', profile.nameID);
-  console.log('✅ [DEBUG] Profile nameIDFormat:', profile.nameIDFormat);
-  console.log('✅ [DEBUG] Profile attributes:', profile.attributes);
+      console.log('✅ [DEBUG] Profile object:', profile);
+      console.log('✅ [DEBUG] Profile nameID:', profile.nameID);
+      console.log('✅ [DEBUG] Profile nameIDFormat:', profile.nameIDFormat);
+      console.log('✅ [DEBUG] Profile attributes:', profile.attributes);
 
-  try {
-    const xml = profile.getAssertionXml ? profile.getAssertionXml() : 'N/A';
-    console.log('✅ [DEBUG] Raw SAML Assertion XML (truncated):', xml?.substring(0, 300) + '...');
-  } catch (e) {
-    console.error('❌ [DEBUG] Could not get assertion XML:', e);
-  }
+      try {
+        const xml = profile.getAssertionXml ? profile.getAssertionXml() : 'N/A';
+        console.log('✅ [DEBUG] Raw SAML Assertion XML (truncated):', xml?.substring(0, 300) + '...');
+      } catch (e) {
+        console.error('❌ [DEBUG] Could not get assertion XML:', e);
+      }
 
-  console.log('🔍 [DEBUG] InResponseTo:', (profile as any).inResponseTo);
+      console.log('🔍 [DEBUG] InResponseTo:', (profile as any).inResponseTo);
 
-  return done(null, profile);
+      return done(null, profile);
     }
   );
 
-  passport.use('saml', samlStrategy);
+  // Type assertion to fix the passport.use issue
+  (passport as any).use('saml', samlStrategy as any);
   console.log('✅ [DEBUG] SAML strategy registered successfully');
   
   // Log all registered strategies
-  console.log('🔍 [DEBUG] Registered strategies:', Object.keys(passport.strategies || {}));
+  console.log('🔍 [DEBUG] Registered strategies:', Object.keys((passport as any)._strategies || {}));
   
 } catch (error) {
   console.error('❌ [DEBUG] Failed to create SAML strategy:', error);

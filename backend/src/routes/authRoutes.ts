@@ -1,18 +1,15 @@
 import { Router } from 'express';
-import authController, { AuthRequest } from '../controllers/authController';
+import authController from '../controllers/authController';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
 
 // ==================== Unprotected SAML Routes ====================
-router.get('/saml/login', (req, res, next) => authController.login(req as AuthRequest, res, next));
-router.post('/saml/callback', (req, res, next) => authController.callback(req as AuthRequest, res, next));
-router.get('/saml/logout', (req, res) =>
-authController.logout(req as AuthRequest, res)
-);
+router.get('/saml/login', (req, res, next) => authController.login(req as any, res, next));
+router.post('/saml/callback', (req, res, next) => authController.callback(req as any, res, next));
+router.get('/saml/logout', (req, res) => authController.logout(req as any, res));
 
-
-// ==================== Unprotected Dev Routes ====================
+// ==================== Development Routes ====================
 router.get('/dev/login', (req, res) => {
   const token = jwt.sign(
     { userId: 'dev-user', email: 'dev@example.com', sessionId: 'dev-session' },
@@ -42,7 +39,5 @@ router.use(authController.requireAuth);
 
 router.get('/check', (req, res) => authController.checkAuth(req as any, res));
 router.get('/user', (req, res) => authController.getCurrentUser(req as any, res));
-
-
 
 export default router;
