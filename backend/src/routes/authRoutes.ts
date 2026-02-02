@@ -28,13 +28,13 @@ router.get('/dev/login', (req, res) => {
   });
 
   const returnTo = req.query.returnTo || '/';
-  res.redirect(`http://localhost:8081${returnTo}`);
+  res.redirect(`${process.env.FRONTEND_URL}${returnTo}`);
 });
 
 router.post('/dev/logout', (req, res) => {
   res.clearCookie('jwt');
   res.clearCookie('connect.sid');
-  res.redirect('http://localhost:8081/login');
+  res.redirect(`${process.env.FRONTEND_URL}/login`);
 });
 
 // ==================== Protected Routes ====================
