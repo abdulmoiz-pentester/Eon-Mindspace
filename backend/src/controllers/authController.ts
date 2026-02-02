@@ -48,7 +48,7 @@ class authController {
     try {
       jwt.verify(token, process.env.JWT_SECRET!);
       console.log('✅ JWT valid, redirecting to chatbot');
-      return res.redirect('process.env.FRONTEND_URL');
+       return res.redirect(process.env.FRONTEND_URL!);
     } catch {
       console.log('⚠️ JWT invalid or expired, continue to SSO login');
     }
