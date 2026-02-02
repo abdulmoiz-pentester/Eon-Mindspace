@@ -7,24 +7,25 @@ const express_1 = require("express");
 const bedrockController_1 = require("../controllers/bedrockController");
 const authController_1 = __importDefault(require("../controllers/authController"));
 const router = (0, express_1.Router)();
-// Apply authentication middleware to ALL API routes
+// ==================== Apply auth to all API routes ====================
 router.use(authController_1.default.requireAuth);
 // Protected API endpoints
 router.post("/bedrock-agent", bedrockController_1.getBedrockAgentResponse);
 // Get user profile
 router.get("/user/profile", (req, res) => {
-    const user = req.user; // User info is now in req.user from JWT
+    const authReq = req; // typecast here
     res.json({
-        user,
+        user: authReq.user,
         timestamp: new Date().toISOString(),
     });
 });
-// Additional protected endpoints can be added here
+// Health check
 router.get("/health", (req, res) => {
+    const authReq = req; // typecast here
     res.json({
         status: "OK",
         authenticated: true,
-        user: req.user?.email || "authenticated"
+        user: authReq.user?.email || "authenticated",
     });
 });
 exports.default = router;

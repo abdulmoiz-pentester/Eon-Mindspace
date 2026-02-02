@@ -226,13 +226,22 @@ const Index = () => {
     });
   }, [messages, toast]);
 
- const handleSignOut = useCallback(() => {
+const handleSignOut = useCallback(() => {
+  console.log('🚪 Frontend: Signing out...');
+  
   try {
-    signOut(); // clear frontend state
+    // Clear frontend state
     localStorage.removeItem(CHAT_HISTORY_KEY);
-
-    // Redirect directly to backend logout (follows IdP redirect properly)
-    window.location.href = "http://localhost:5000/auth/saml/logout";
+    
+    // Clear JWT cookie on frontend too
+    document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=localhost;';
+    document.cookie = 'eon.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=localhost;';
+    
+    // Clear user state if using useAuth
+    signOut && signOut();
+    
+    // Redirect to backend logout endpoint
+    window.location.href = 'http://localhost:5000/auth/saml/logout';
   } catch (e) {
     console.error("Logout failed", e);
     toast({

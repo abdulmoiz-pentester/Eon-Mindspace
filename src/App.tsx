@@ -27,21 +27,21 @@ const App = () => (
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={
-            <ProtectedRoute>
+            
               <Index />
-            </ProtectedRoute>
+           
           } />
           <Route path="/bedrock-agent" element={
-            <ProtectedRoute>
+            
               <Index />
-            </ProtectedRoute>
+           
           } />
           <Route path="/test-auth" element={<TestAuth />} />
           {/* Catch all routes and redirect to login if not authenticated */}
           <Route path="*" element={
-            <ProtectedRoute>
+           
               <NotFound />
-            </ProtectedRoute>
+         
           } />
         </Routes>
       </BrowserRouter>

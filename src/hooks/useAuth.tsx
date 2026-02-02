@@ -13,9 +13,13 @@ export function useAuth() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch(`${process.env.BACKEND_URL}/auth/user`, {
-  credentials: "include",
-});
+        // FIX: Use hardcoded URL or import.meta.env for Vite
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        
+        const res = await fetch(`${backendUrl}/auth/user`, {
+          credentials: "include",
+        });
+        
         if (!res.ok) throw new Error("Not authenticated");
 
         const data = await res.json();
@@ -31,10 +35,11 @@ export function useAuth() {
     fetchUser();
   }, []);
 
-const signOut = () => {
-setUser(null);
-window.location.href = `${process.env.BACKEND_URL}/auth/saml/logout`;
-};
+  const signOut = () => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    setUser(null);
+    window.location.href = `${backendUrl}/auth/saml/logout`;
+  };
 
   return { user, loading, signOut };
 }

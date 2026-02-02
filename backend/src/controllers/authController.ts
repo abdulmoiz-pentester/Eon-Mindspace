@@ -1,64 +1,55 @@
 import { Request, Response, NextFunction } from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
-import { AwsCredentialIdentity } from '@aws-sdk/types';
-import { STSClient, AssumeRoleWithSAMLCommand } from "@aws-sdk/client-sts";
-import 'express-session';
 
-declare module 'express-session' {
-  interface SessionData {
-    awsCredentials?: AwsCredentialIdentity;
-  }
-}
-
-const stsClient = new STSClient({ region: 'us-west-2' });
-
-// SAML User type
 interface SamlUser {
   nameID: string;
   email?: string;
   sessionIndex?: string;
-  [key: string]: any;
 }
 
-// Extended Request to include typed user
 export interface AuthRequest extends Request {
-  user?: SamlUser;
+  user?: any;
 }
 
-class authController {
-  // ==================== SAML Login ====================
- async login(req: AuthRequest, res: Response, next: NextFunction) {
+class AuthController {
+  // ==================== LOGIN ====================
+  async login(req: AuthRequest, res: Response, next: NextFunction) {
+    console.log('🔐 Login endpoint called');
+    
+    // If user already has valid JWT, redirect to frontend
+    const token = req.cookies.jwt;
+    if (token) {
       try {
-    const awsCredentials = await defaultProvider()(); // auto picks up default SSO login
-    req.session.awsCredentials = awsCredentials; // store in session
-    console.log("✅ AWS credentials stored in session:", {
-      accessKeyId: awsCredentials.accessKeyId,
-      hasSessionToken: !!awsCredentials.sessionToken,
-      expiration: awsCredentials.expiration?.toISOString(),
-    });
-  } catch (e) {
-    console.error("❌ Failed to load AWS credentials from SSO:", e);
-  }
-  const token = req.cookies.jwt;
-
-  // 1️⃣ JWT exists → redirect directly
-  if (token) {
-    try {
-      jwt.verify(token, process.env.JWT_SECRET!);
-      console.log('✅ JWT valid, redirecting to chatbot');
-       return res.redirect(process.env.FRONTEND_URL!);
-    } catch {
-      console.log('⚠️ JWT invalid or expired, continue to SSO login');
+        jwt.verify(token, process.env.JWT_SECRET!);
+        console.log('✅ User already has valid JWT, redirecting to /');
+        return res.redirect(process.env.FRONTEND_URL!);
+      } catch (error) {
+        console.log('⚠️ Invalid JWT, proceeding with SAML');
+      }
     }
+    
+    // Start SAML authentication
+    passport.authenticate('saml', {
+      failureRedirect: '/login-failed',
+    })(req, res, next);
   }
 
-  // 2️⃣ Check if SSO session exists
-  if (req.isAuthenticated && req.isAuthenticated()) {
-    console.log('🔐 SSO session active, issuing JWT silently');
+  // ==================== CALLBACK ====================
+  callback(req: AuthRequest, res: Response, next: NextFunction) {
+  console.log('🔐 SAML callback received');
+  
+  passport.authenticate('saml', { 
+    failureRedirect: `${process.env.FRONTEND_URL}/login` 
+  })(req, res, async () => {
+    if (!req.user) {
+      console.error('❌ No user after SAML auth');
+      return res.redirect(`${process.env.FRONTEND_URL}/login`);
+    }
+    
     const user = req.user as SamlUser;
-
+    
+    // Create JWT token
     const token = jwt.sign(
       {
         userId: user.nameID,
@@ -68,133 +59,141 @@ class authController {
       process.env.JWT_SECRET!,
       { expiresIn: '24h' }
     );
-
+    
+    console.log('🔐 Setting JWT cookie...');
+    
+    // Set JWT cookie - SIMPLIFIED VERSION
     res.cookie('jwt', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      httpOnly: false, // TEMPORARY: set to true in production
+      secure: false,   // false for localhost
+      sameSite: 'lax', // lax is better for redirects
       maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
+      // NO domain - let browser default
     });
-
-    return res.redirect(process.env.FRONTEND_URL!);
-  }
-
-  // 3️⃣ Otherwise → normal SAML login
-  console.log('🔐 No JWT or SSO session, starting SAML login');
-  passport.authenticate('saml', {
-    failureRedirect: '/login',
-    failureFlash: true,
-  })(req, res, next);
-}
-
-
-
-  // ==================== SAML Callback ====================
-
-callback(req: AuthRequest, res: Response, next: NextFunction) {
-  passport.authenticate('saml', { failureRedirect: `${process.env.FRONTEND_URL}/login` })(req, res, async () => {
-    if (!req.user) return res.redirect(`${process.env.FRONTEND_URL}/login`);
-
-    const authenticatedUser = req.user;
-
-    // No AWS credentials stuff here
-
-    const token = jwt.sign(
-      { userId: authenticatedUser.nameID, email: authenticatedUser.email || authenticatedUser.nameID, sessionId: req.sessionID },
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
-    );
-
-    res.cookie('jwt', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 24*60*60*1000 });
-    res.redirect(process.env.FRONTEND_URL!);
+    
+    console.log('✅ Cookie set, redirecting to frontend');
+    
+    // IMPORTANT: Use JavaScript redirect to ensure cookies are set
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Redirecting...</title>
+          <script>
+            // Cookies should be set by now
+            console.log('Cookies after backend set:', document.cookie);
+            // Redirect to frontend
+            window.location.href = '${process.env.FRONTEND_URL}';
+          </script>
+        </head>
+        <body>
+          <p>Redirecting to application...</p>
+        </body>
+      </html>
+    `;
+    
+    res.send(html);
   });
 }
 
-  // ==================== Logout ====================
-async logout(req: AuthRequest, res: Response) {
-  try {
-    // 1️⃣ Logout Passport
-    await new Promise<void>((resolve, reject) => {
-      req.logout((err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-
-    // 2️⃣ Destroy session
-    await new Promise<void>((resolve, reject) => {
-      req.session.destroy((err) => {
-        if (err) {
-          console.error('Session destroy error:', err);
-          return reject(err);
-        }
-        resolve();
-      });
-    });
-
-    // 3️⃣ Clear cookies
-    res.clearCookie('jwt', { path: '/' });
-res.clearCookie('connect.sid', { path: '/' });
-
-    // 4️⃣ Redirect to SSO logout or frontend login
-    const frontendUrl = process.env.FRONTEND_URL || 'process.env.FRONTEND_URL';
-    const idpLogoutUrl = process.env.SAML_LOGOUT_URL || '';
-
-    if (process.env.ENABLE_SAML === 'true' && idpLogoutUrl) {
-      console.log('🔐 Redirecting to SSO logout');
-      return res.redirect(idpLogoutUrl);
-    }
-
-    res.redirect(`${frontendUrl}/login`);
-  } catch (err) {
-    console.error('Logout failed:', err);
-    res.status(500).send('Failed to logout');
-  }
-}
-
-
-
-
-  // ==================== Check Auth Status ====================
+  // ==================== CHECK AUTH ====================
   checkAuth(req: AuthRequest, res: Response) {
+    // NO CACHING - always fresh response
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     const token = req.cookies.jwt;
-    if (!token) return res.json({ authenticated: false });
-
+    
+    if (!token) {
+      return res.json({ authenticated: false });
+    }
+    
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      res.json({ authenticated: true, user: decoded });
-    } catch {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      res.json({ 
+        authenticated: true, 
+        user: decoded,
+        timestamp: Date.now()
+      });
+    } catch (error) {
       res.json({ authenticated: false });
     }
   }
 
-  // ==================== Get Current User ====================
+  // ==================== GET CURRENT USER ====================
   getCurrentUser(req: AuthRequest, res: Response) {
     const token = req.cookies.jwt;
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-      res.json({ user: decoded });
-    } catch {
-      res.status(401).json({ error: 'Invalid token' });
+      res.json({ 
+        user: decoded,
+        authenticated: true,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(401).json({ 
+        error: 'Invalid token',
+        authenticated: false 
+      });
     }
   }
 
-  // ==================== Require Auth Middleware ====================
-  requireAuth(req: Request, res: Response, next: NextFunction) {
-  const token = req.cookies.jwt;
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    (req as AuthRequest).user = decoded as SamlUser; // typecast here
-    next();
-  } catch (err) {
-    console.error('Token verification error:', err);
-    res.status(401).json({ error: 'Invalid token' });
+  // ==================== LOGOUT ====================
+logout(req: AuthRequest, res: Response) {
+  console.log('🚪 Logout requested');
+  
+  // Clear JWT cookie
+  res.clearCookie('jwt', { 
+    path: '/',
+    domain: 'localhost'
+  });
+  
+ 
+  
+  // Destroy session
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('❌ Session destroy error:', err);
+    }
+    
+    console.log('✅ Session destroyed');
+    
+    // Check if we should redirect to SSO logout
+    const ssoLogoutUrl = process.env.SAML_LOGOUT_URL;
+    
+    if (ssoLogoutUrl && process.env.ENABLE_SAML === 'true') {
+      console.log('🔗 Redirecting to SSO logout');
+      return res.redirect(ssoLogoutUrl);
+    } else {
+      // Redirect to frontend login page
+      console.log('🔗 Redirecting to frontend login');
+      return res.redirect(`${process.env.FRONTEND_URL}/login`);
+    }
+  });
+}
+  // ==================== AUTH MIDDLEWARE ====================
+  requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
+    const token = req.cookies.jwt;
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      req.user = decoded;
+      next();
+    } catch (error) {
+      res.status(401).json({ error: 'Invalid token' });
+    }
   }
 }
-}
 
-export default new authController();
+export default new AuthController();
