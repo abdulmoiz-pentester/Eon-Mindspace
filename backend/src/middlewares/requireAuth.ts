@@ -17,10 +17,10 @@ declare global {
 }
 
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  console.log('🔐 [DEBUG] requireAuth called');
-  console.log('🔐 [DEBUG] Request path:', req.path);
-  console.log('🔐 [DEBUG] Cookies:', req.cookies);
-  console.log('🔐 [DEBUG] JWT cookie exists:', !!req.cookies.jwt);
+  console.log('[DEBUG] requireAuth called');
+  console.log('[DEBUG] Request path:', req.path);
+  console.log('[DEBUG] Cookies:', req.cookies);
+  console.log('[DEBUG] JWT cookie exists:', !!req.cookies.jwt);
   
   const token = req.cookies.jwt;
   
@@ -29,9 +29,9 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!);
       (req as any).user = decoded;
-      console.log('✅ JWT verified, user authenticated via token');
+      console.log('JWT verified, user authenticated via token');
     } catch (err) {
-      console.error('❌ JWT verification failed:', err);
+      console.error('JWT verification failed:', err);
       // Clear invalid JWT cookie
       res.clearCookie('jwt');
     }
@@ -56,7 +56,7 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000,
     });
-    console.log('🔐 Auto-generated JWT for session user');
+    console.log('Auto-generated JWT for session user');
     
     // Also set user on request from session
     (req as any).user = {

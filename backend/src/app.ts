@@ -79,8 +79,6 @@ app.use(cors({
 // Handle preflight
 app.options('*', cors());
 
-
-
 // ==================== Core Middleware ====================
 app.use(morgan("dev"));
 app.use(express.json());
@@ -116,9 +114,9 @@ app.use((req, res, next) => {
 // ==================== Passport ====================
 if (process.env.ENABLE_SAML === "true") {
   require("./config/passport");
-  console.log("✅ SAML strategy registered");
+  console.log("SAML strategy registered");
 } else {
-  console.log("⚠️ SAML disabled (dev mode)");
+  console.log("SAML disabled (dev mode)");
 }
 
 app.use(passport.initialize());
@@ -186,8 +184,8 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`\n✅ Server running on port ${PORT}`);
-  console.log(`🌐 CORS configured for development (allowing all origins)`);
-  console.log(`🔐 SAML enabled: ${process.env.ENABLE_SAML === "true"}`);
-  console.log(`⚡ Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`\nServer running on port ${PORT}`);
+  console.log(`CORS configured for development (allowing all origins)`);
+  console.log(`SAML enabled: ${process.env.ENABLE_SAML === "true"}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

@@ -8,17 +8,17 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 class AuthController {
     // ==================== LOGIN ====================
     async login(req, res, next) {
-        console.log('🔐 Login endpoint called');
+        console.log('Login endpoint called');
         // If user already has valid JWT, redirect to frontend
         const token = req.cookies.jwt;
         if (token) {
             try {
                 jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-                console.log('✅ User already has valid JWT, redirecting to /');
+                console.log('User already has valid JWT, redirecting to /');
                 return res.redirect(process.env.FRONTEND_URL);
             }
             catch (error) {
-                console.log('⚠️ Invalid JWT, proceeding with SAML');
+                console.log('Invalid JWT, proceeding with SAML');
             }
         }
         // Start SAML authentication
@@ -28,12 +28,12 @@ class AuthController {
     }
     // ==================== CALLBACK ====================
     callback(req, res, next) {
-        console.log('🔐 SAML callback received');
+        console.log('SAML callback received');
         passport_1.default.authenticate('saml', {
             failureRedirect: `${process.env.FRONTEND_URL}/login`
         })(req, res, async () => {
             if (!req.user) {
-                console.error('❌ No user after SAML auth');
+                console.error('No user after SAML auth');
                 return res.redirect(`${process.env.FRONTEND_URL}/login`);
             }
             const user = req.user;
@@ -43,7 +43,7 @@ class AuthController {
                 email: user.email || user.nameID,
                 sessionId: req.sessionID,
             }, process.env.JWT_SECRET, { expiresIn: '24h' });
-            console.log('🔐 Setting JWT cookie...');
+            console.log('Setting JWT cookie...');
             // Set JWT cookie - SIMPLIFIED VERSION
             res.cookie('jwt', token, {
                 httpOnly: false, // TEMPORARY: set to true in production
@@ -51,7 +51,6 @@ class AuthController {
                 sameSite: 'lax', // lax is better for redirects
                 maxAge: 24 * 60 * 60 * 1000,
                 path: '/',
-                // NO domain - let browser default
             });
             console.log('✅ Cookie set, redirecting to frontend');
             // IMPORTANT: Use JavaScript redirect to ensure cookies are set
@@ -120,7 +119,7 @@ class AuthController {
     }
     // ==================== LOGOUT ====================
     logout(req, res) {
-        console.log('🚪 Logout requested');
+        console.log('Logout requested');
         // Clear JWT cookie
         res.clearCookie('jwt', {
             path: '/',
@@ -129,18 +128,18 @@ class AuthController {
         // Destroy session
         req.session.destroy((err) => {
             if (err) {
-                console.error('❌ Session destroy error:', err);
+                console.error('Session destroy error:', err);
             }
-            console.log('✅ Session destroyed');
+            console.log('Session destroyed');
             // Check if we should redirect to SSO logout
             const ssoLogoutUrl = process.env.SAML_LOGOUT_URL;
             if (ssoLogoutUrl && process.env.ENABLE_SAML === 'true') {
-                console.log('🔗 Redirecting to SSO logout');
+                console.log('Redirecting to SSO logout');
                 return res.redirect(ssoLogoutUrl);
             }
             else {
                 // Redirect to frontend login page
-                console.log('🔗 Redirecting to frontend login');
+                console.log('Redirecting to frontend login');
                 return res.redirect(`${process.env.FRONTEND_URL}/login`);
             }
         });

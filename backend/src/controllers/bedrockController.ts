@@ -32,7 +32,6 @@ export const getBedrockAgentResponse = async (req: Request, res: Response) => {
       - Message: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}
     `);
 
-    
     const response = await invokeAgent(agentArn, message, aliasId);
     res.json({ 
       success: true, 

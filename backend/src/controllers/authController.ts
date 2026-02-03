@@ -15,17 +15,17 @@ export interface AuthRequest extends Request {
 class AuthController {
   // ==================== LOGIN ====================
   async login(req: AuthRequest, res: Response, next: NextFunction) {
-    console.log('🔐 Login endpoint called');
+    console.log('Login endpoint called');
     
     // If user already has valid JWT, redirect to frontend
     const token = req.cookies.jwt;
     if (token) {
       try {
         jwt.verify(token, process.env.JWT_SECRET!);
-        console.log('✅ User already has valid JWT, redirecting to /');
+        console.log('User already has valid JWT, redirecting to /');
         return res.redirect(process.env.FRONTEND_URL!);
       } catch (error) {
-        console.log('⚠️ Invalid JWT, proceeding with SAML');
+        console.log('Invalid JWT, proceeding with SAML');
       }
     }
     
@@ -37,13 +37,13 @@ class AuthController {
 
   // ==================== CALLBACK ====================
   callback(req: AuthRequest, res: Response, next: NextFunction) {
-  console.log('🔐 SAML callback received');
+  console.log('SAML callback received');
   
   passport.authenticate('saml', { 
     failureRedirect: `${process.env.FRONTEND_URL}/login` 
   })(req, res, async () => {
     if (!req.user) {
-      console.error('❌ No user after SAML auth');
+      console.error('No user after SAML auth');
       return res.redirect(`${process.env.FRONTEND_URL}/login`);
     }
     
@@ -60,7 +60,7 @@ class AuthController {
       { expiresIn: '24h' }
     );
     
-    console.log('🔐 Setting JWT cookie...');
+    console.log('Setting JWT cookie...');
     
     // Set JWT cookie - SIMPLIFIED VERSION
     res.cookie('jwt', token, {
@@ -69,7 +69,6 @@ class AuthController {
       sameSite: 'lax', // lax is better for redirects
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
-      // NO domain - let browser default
     });
     
     console.log('✅ Cookie set, redirecting to frontend');
@@ -147,7 +146,7 @@ class AuthController {
 
   // ==================== LOGOUT ====================
 logout(req: AuthRequest, res: Response) {
-  console.log('🚪 Logout requested');
+  console.log('Logout requested');
   
   // Clear JWT cookie
   res.clearCookie('jwt', { 
@@ -160,20 +159,20 @@ logout(req: AuthRequest, res: Response) {
   // Destroy session
   req.session.destroy((err) => {
     if (err) {
-      console.error('❌ Session destroy error:', err);
+      console.error('Session destroy error:', err);
     }
     
-    console.log('✅ Session destroyed');
+    console.log('Session destroyed');
     
     // Check if we should redirect to SSO logout
     const ssoLogoutUrl = process.env.SAML_LOGOUT_URL;
     
     if (ssoLogoutUrl && process.env.ENABLE_SAML === 'true') {
-      console.log('🔗 Redirecting to SSO logout');
+      console.log('Redirecting to SSO logout');
       return res.redirect(ssoLogoutUrl);
     } else {
       // Redirect to frontend login page
-      console.log('🔗 Redirecting to frontend login');
+      console.log('Redirecting to frontend login');
       return res.redirect(`${process.env.FRONTEND_URL}/login`);
     }
   });

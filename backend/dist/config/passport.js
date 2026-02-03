@@ -7,18 +7,18 @@ exports.passport = void 0;
 const passport_1 = __importDefault(require("passport"));
 exports.passport = passport_1.default;
 const passport_saml_1 = require("passport-saml");
-console.log('🔐 [DEBUG] Loading SAML strategy...');
+console.log('[DEBUG] Loading SAML strategy...');
 // Serialize/Deserialize User
 passport_1.default.serializeUser((user, done) => {
-    console.log('🔐 [DEBUG] Serialize user called');
-    console.log('🔐 [DEBUG] User to serialize:', user);
-    console.log('🔐 [DEBUG] User nameID:', user?.nameID);
-    console.log('🔐 [DEBUG] User email:', user?.email);
+    console.log('DEBUG] Serialize user called');
+    console.log('DEBUG] User to serialize:', user);
+    console.log('[DEBUG] User nameID:', user?.nameID);
+    console.log('[DEBUG] User email:', user?.email);
     done(null, user);
 });
 passport_1.default.deserializeUser((user, done) => {
-    console.log('🔐 [DEBUG] Deserialize user called');
-    console.log('🔐 [DEBUG] User to deserialize:', user);
+    console.log('DEBUG] Deserialize user called');
+    console.log('[DEBUG] User to deserialize:', user);
     done(null, user);
 });
 // Configure SAML strategy
@@ -35,31 +35,31 @@ const samlConfig = {
 // Create and register SAML strategy
 try {
     const samlStrategy = new passport_saml_1.Strategy(samlConfig, (profile, done) => {
-        console.log('🔐 [DEBUG] SAML verify function called');
+        console.log('[DEBUG] SAML verify function called');
         if (!profile) {
-            console.error('❌ [DEBUG] No profile found');
+            console.error('[DEBUG] No profile found');
             return done(new Error('No profile found'));
         }
-        console.log('✅ [DEBUG] Profile object:', profile);
-        console.log('✅ [DEBUG] Profile nameID:', profile.nameID);
-        console.log('✅ [DEBUG] Profile nameIDFormat:', profile.nameIDFormat);
-        console.log('✅ [DEBUG] Profile attributes:', profile.attributes);
+        console.log('[DEBUG] Profile object:', profile);
+        console.log('[DEBUG] Profile nameID:', profile.nameID);
+        console.log('[DEBUG] Profile nameIDFormat:', profile.nameIDFormat);
+        console.log('[DEBUG] Profile attributes:', profile.attributes);
         try {
             const xml = profile.getAssertionXml ? profile.getAssertionXml() : 'N/A';
-            console.log('✅ [DEBUG] Raw SAML Assertion XML (truncated):', xml?.substring(0, 300) + '...');
+            console.log('[DEBUG] Raw SAML Assertion XML (truncated):', xml?.substring(0, 300) + '...');
         }
         catch (e) {
-            console.error('❌ [DEBUG] Could not get assertion XML:', e);
+            console.error('[DEBUG] Could not get assertion XML:', e);
         }
         console.log('🔍 [DEBUG] InResponseTo:', profile.inResponseTo);
         return done(null, profile);
     });
     // Type assertion to fix the passport.use issue
     passport_1.default.use('saml', samlStrategy);
-    console.log('✅ [DEBUG] SAML strategy registered successfully');
+    console.log('[DEBUG] SAML strategy registered successfully');
     // Log all registered strategies
-    console.log('🔍 [DEBUG] Registered strategies:', Object.keys(passport_1.default._strategies || {}));
+    console.log('[DEBUG] Registered strategies:', Object.keys(passport_1.default._strategies || {}));
 }
 catch (error) {
-    console.error('❌ [DEBUG] Failed to create SAML strategy:', error);
+    console.error('[DEBUG] Failed to create SAML strategy:', error);
 }

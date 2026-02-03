@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { STSClient, AssumeRoleWithSAMLCommand } from '@aws-sdk/client-sts';
-import awsConfig from '../config/aws';
 import jwt from 'jsonwebtoken';
 
 // JWT secret for session tokens
@@ -36,42 +35,6 @@ export interface AWSCredentials {
   sessionToken: string;
   expiration: Date;
 }
-
-// Service to get AWS credentials from SAML assertion
-export const getCredentialsFromSAML = async (
-  samlAssertion: string,
-  roleArn: string,
-  principalArn: string
-): Promise<AWSCredentials> => {
-  const stsClient = new STSClient({ 
-    region: awsConfig.region 
-  });
-  
-  const command = new AssumeRoleWithSAMLCommand({
-    RoleArn: roleArn,
-    PrincipalArn: principalArn,
-    SAMLAssertion: samlAssertion,
-    DurationSeconds: 3600, // 1 hour
-  });
-  
-  try {
-    const response = await stsClient.send(command);
-    
-    if (!response.Credentials) {
-      throw new Error('No credentials returned from AWS STS');
-    }
-    
-    return {
-      accessKeyId: response.Credentials.AccessKeyId!,
-      secretAccessKey: response.Credentials.SecretAccessKey!,
-      sessionToken: response.Credentials.SessionToken!,
-      expiration: response.Credentials.Expiration!,
-    };
-  } catch (error) {
-    console.error('Failed to get AWS credentials from SAML:', error);
-    throw error;
-  }
-};
 
 // Get AWS credentials for the current session
 export const getCurrentAWSCredentials = (req: Request): AWSCredentials => {
