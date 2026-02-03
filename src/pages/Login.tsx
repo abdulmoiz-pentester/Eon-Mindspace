@@ -7,20 +7,20 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('🔍 Login page loaded');
-    console.log('🍪 Cookies:', document.cookie);
+    console.log('Login page loaded');
+    console.log('Cookies:', document.cookie);
     
     // Quick check for JWT cookie
     const hasJWT = document.cookie.includes('jwt=');
-    console.log('🔍 Has JWT cookie on login page?', hasJWT);
+    console.log('Has JWT cookie on login page?', hasJWT);
     
     if (hasJWT) {
-      console.log('✅ Login: JWT found, checking with backend...');
+      console.log('Login: JWT found, checking with backend...');
       
       // Verify with backend before redirecting
       const checkAuth = async () => {
         try {
-          const response = await fetch('http://localhost:5000/auth/check', {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/auth/check`, {
             credentials: 'include',
             cache: 'no-store',
           });
@@ -28,26 +28,26 @@ const Login = () => {
           if (response.ok) {
             const data = await response.json();
             if (data.authenticated) {
-              console.log('✅ Login: Backend confirms authentication, redirecting to /');
+              console.log('Login: Backend confirms authentication, redirecting to /');
               navigate("/", { replace: true });
             } else {
-              console.log('⚠️ Login: JWT exists but backend says not authenticated');
+              console.log('Login: JWT exists but backend says not authenticated');
               // Stay on login page
             }
           }
         } catch (error) {
-          console.error('❌ Login: Auth check failed:', error);
+          console.error('Login: Auth check failed:', error);
         }
       };
       
       checkAuth();
     } else {
-      console.log('🔍 Login: No JWT found, showing login form');
+      console.log('Login: No JWT found, showing login form');
     }
   }, [navigate]);
 
   const handleSSOLogin = () => {
-    console.log('🚀 Initiating AWS SSO login...');
+    console.log('Initiating AWS SSO login...');
     // Clear any stale cookies first
     document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'eon.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
@@ -79,9 +79,6 @@ const Login = () => {
         <div className="mt-6 text-center text-sm text-gray-500">
           <p>Secure authentication with AWS Single Sign-On</p>
         </div>
-        
-        {/* Debug info - remove in production */}
-       
       </div>
     </div>
   );

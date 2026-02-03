@@ -112,7 +112,7 @@ const Index = () => {
       setIsLoading(true);
 
       try {
-        console.log("🔄 Calling agent...");
+        console.log("Calling agent...");
         const reply = await sendToAgent(content); // Call your backend API
         
         console.log("✅ Agent reply received:", reply.substring(0, 100));
@@ -130,7 +130,7 @@ const Index = () => {
         saveToHistory(finalMessages);
         
       } catch (err) {
-        console.error("❌ Error in handleSend:", err);
+        console.error("Error in handleSend:", err);
         
         // Add error message
         const errorMessage: Message = {
@@ -241,7 +241,7 @@ const handleSignOut = useCallback(() => {
     signOut && signOut();
     
     // Redirect to backend logout endpoint
-    window.location.href = 'http://localhost:5000/auth/saml/logout';
+    window.location.href = `${process.env.REACT_APP_BACKEND_URL}/auth/saml/logout`;
   } catch (e) {
     console.error("Logout failed", e);
     toast({
@@ -277,10 +277,10 @@ const handleSignOut = useCallback(() => {
       setIsLoading(true);
       
       try {
-        console.log("🔄 Regenerating response...");
+        console.log("Regenerating response...");
         const reply = await sendToAgent(lastUserMessage.content);
         
-        console.log("✅ Regenerated reply received:", reply.substring(0, 100));
+        console.log("Regenerated reply received:", reply.substring(0, 100));
         
         // Create new assistant message
         const assistantMessage: Message = {
@@ -296,7 +296,7 @@ const handleSignOut = useCallback(() => {
         saveToHistory(finalMessages);
         
       } catch (err) {
-        console.error("❌ Error in handleRegenerate:", err);
+        console.error("Error in handleRegenerate:", err);
         toast({
           title: "Error",
           description: "Failed to regenerate response.",

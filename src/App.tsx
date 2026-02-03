@@ -7,7 +7,6 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import TestAuth from './pages/TestAuth';
-import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,7 +36,7 @@ const App = () => (
            
           } />
           <Route path="/test-auth" element={<TestAuth />} />
-          {/* Catch all routes and redirect to login if not authenticated */}
+
           <Route path="*" element={
            
               <NotFound />

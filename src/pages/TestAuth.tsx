@@ -40,7 +40,7 @@ const TestAuth = () => {
   // Test 1: Check backend health
   const testHealth = async () => {
     try {
-      const response = await fetch('http://localhost:5000/auth/health');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/auth/health`);
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
@@ -51,7 +51,7 @@ const TestAuth = () => {
   // Test 2: Check authentication status
   const testAuthCheck = async () => {
     try {
-      const response = await fetch('http://localhost:5000/auth/check', {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/auth/check`, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -64,7 +64,7 @@ const TestAuth = () => {
   // Test 3: Get current session
   const testSession = async () => {
     try {
-      const response = await fetch('http://localhost:5000/auth/session', {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/auth/session`, {
         credentials: 'include'
       });
       
@@ -82,7 +82,7 @@ const TestAuth = () => {
   // Test 4: Test SAML metadata
   const testMetadata = async () => {
     try {
-      const response = await fetch('http://localhost:5000/auth/metadata');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/auth/metadata`);
       const text = await response.text();
       const isXML = text.includes('<?xml') || text.includes('EntityDescriptor');
       return { 
@@ -120,7 +120,7 @@ const TestAuth = () => {
   // Clear everything and logout
   const clearAndLogout = async () => {
     try {
-      await fetch('http://localhost:5000/auth/logout', {
+      await fetch(`${process.env.REACT_APP_BACKEND_URL}/auth/logout`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -149,12 +149,12 @@ const TestAuth = () => {
   // Test SAML Login directly
   const testSamlLogin = () => {
     const returnTo = encodeURIComponent('/test-auth');
-    window.open(`http://localhost:5000/auth/login?returnTo=${returnTo}`, '_blank');
+    window.open(`${process.env.REACT_APP_BACKEND_URL}/auth/login?returnTo=${returnTo}`, '_blank');
   };
 
   // Test Dev Login
   const testDevLogin = () => {
-    window.open('http://localhost:5000/auth/dev/login?email=testuser@eonhealth.com&name=Test%20User', '_blank');
+    window.open(`${process.env.REACT_APP_BACKEND_URL}/auth/dev/login?email=testuser@eonhealth.com&name=Test%20User`, '_blank');
   };
 
   return (
@@ -372,9 +372,9 @@ const TestAuth = () => {
                 <li>Come back here and click "Run All Tests"</li>
                 <li>You should see:
                   <ul className="list-disc pl-5 mt-1">
-                    <li>✅ User information in "Current User Status"</li>
-                    <li>✅ Auth Check showing "authenticated: true"</li>
-                    <li>✅ Session data with user details</li>
+                    <li>User information in "Current User Status"</li>
+                    <li>Auth Check showing "authenticated: true"</li>
+                    <li>Session data with user details</li>
                   </ul>
                 </li>
               </ol>
