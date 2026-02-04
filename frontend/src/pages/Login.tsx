@@ -53,7 +53,7 @@ const Login = () => {
     document.cookie = 'eon.sid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
     // Redirect to backend SAML login
-    window.location.href = 'http://localhost:5000/auth/saml/login';
+   window.location.href = `${import.meta.env.VITE_BACKEND_URL}/auth/saml/login`;
   };
 
   return (
