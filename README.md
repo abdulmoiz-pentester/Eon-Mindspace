@@ -29,7 +29,7 @@ Eon-Mindspace is a cutting-edge, secure conversational AI platform built for ent
     -   Node.js, Express.js, TypeScript
     -   Passport.js with `passport-saml` for SAML authentication
     -   JWT for stateless session management
-    -   AWS SDK for Bedrock, STS integration
+    -   AWS SDK for Bedrock
 -   **Tooling**:
     -   ESLint, Prettier
     -   NPM for package management

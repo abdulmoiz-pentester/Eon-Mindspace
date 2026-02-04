@@ -27,9 +27,9 @@ const invokeAgent = async (agentArn, inputText, agentAliasId = "L3UQ4TMBQ8") => 
         return chunks.join("");
     }
     catch (err) {
-        console.error("🚨 AGENT ERROR:", err.name, "-", err.message);
+        console.error("AGENT ERROR:", err.name, "-", err.message);
         if (err.name === "UnrecognizedClientException") {
-            console.error("💡 Run: aws sso login --profile your-profile");
+            console.error("Run: aws sso login --profile your-profile");
         }
         throw new Error(`Bedrock Agent error: ${err.message}`);
     }
